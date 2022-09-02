@@ -1,4 +1,4 @@
-#include "ParseGFA.hpp"
+#include <ParseGFA.hpp>
 #include <iostream>
 GfaGraph::GfaGraph:
 

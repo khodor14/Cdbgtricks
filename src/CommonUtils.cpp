@@ -1,21 +1,23 @@
 
-#include "CommonUtils.h"
+#include <CommonUtils.h>
 #include <iostream>
+#include <fstream>
+
 size_t baseToInt(char base){
     switch (base)
     {
-    case "a":
-    case "A":
+    case 'a':
+    case 'A':
         return 0;
-    case "c":
-    case "C":
+    case 'c':
+    case 'C':
         return 1;
-    case "g":
+    case 'g':
     case "G":
-        return 2
-    case "t":
-    case "T":
-        return 3
+        return 2;
+    case 't':
+    case 'T':
+        return 3;
     default:
         break;
     }
@@ -32,23 +34,47 @@ uint64_t hash(uint64_t key) {
   return key;
 }
 
-uint64_t hash(string kmer){
-    unit64_t result=0;
+uint64_t hash(std::string kmer){
+    std::uint64_t result=0;
     for(int i=0;i<kmer.size();i++){
         result=result<<2;
         result=result|baseToInt(kmer[i]);
     }
     return hash(result);
 }
-void createHashTable(ifstream& kmers,std::vector<uint64_t> & hashes){
-    while(not kmers.eof()){
-        getline(kmers,line);
+void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
+    std::string line;
+    while(getline(kmers,line)){
+        //getline(kmers,line);
         std::stringstream sstr {line};
         std::string next_kmer;
         std::string next_abundance;
 
         sstr >> next_kmer;
-        sstr >> next_aundance;
+        sstr >> next_abundance;
         hashes.push_back(hash(next_kmer));
     }
+}
+char complement(char c){
+ switch(c){
+    case 'A':
+    case 'a':
+        return 'T';
+    case 'T':
+    case 't':
+        return 'A';
+    case 'C':
+    case 'c':
+        return 'G';
+    case 'G':
+    case 'g':
+        return 'C';
+ }
+}
+std::string reverseComplement(const std::string& s){
+	std::string rc(s.size(),0);
+	for (int i((int)s.length() - 1); i >= 0; i--){
+		rc[s.size()-1-i] = complement(s[i]);
+	}
+	return rc;
 }

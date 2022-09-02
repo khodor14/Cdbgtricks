@@ -1,36 +1,35 @@
-#ifndef GfaGraph
-#define GfaGraph
-#include <iostream>
-#include <vector>
-#include <string>
-
-#ifndef structNode
-#define structNode
-struct structNode
+class Node
 {
-    uint id;
-    std::string sequence; 
-};
-
-
-#endif // !structNode
-
-#ifndef edge
-#define edge
-struct edge
-{
-    u_int sink;
-    u_int source;
-    bool from(true);
-    bool to(true);
-};
-
-#endif // !edge
-class GfaGraph{
+private:
+    int id;
+    std::string unitig;
 public:
-    GfaGraph LoadFromFile(std::string filename);
-    void convertToFasta();
-    std::vector<structNode> nodes;
+    Node(int id,std::string unitig);
+    ~Node();
+    bool operator!=(const Node& other);
+};
+
+class edge
+{
+private:
+    int sink;
+    int source;
+    bool from=true;
+    bool to=true;
+public:
+    edge(/* args */);
+    ~edge();
+};
+
+class GfaGraph
+{
+private:
+    std::vector<Node> nodes;
     std::vector<edge> edges;
-}
-#endif // !GfaGraph
+public:
+    GfaGraph(/* args */);
+    static GfaGraph LoadFromFile(std::string filename);
+    void convertToFasta();
+    ~GfaGraph();
+};
+
