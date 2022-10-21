@@ -2,7 +2,8 @@
 #include <CommonUtils.h>
 #include <iostream>
 #include <fstream>
-
+#include <cstring>
+#include <algorithm>
 size_t baseToInt(char base){
     switch (base)
     {
@@ -77,4 +78,7 @@ std::string reverseComplement(const std::string& s){
 		rc[s.size()-1-i] = complement(s[i]);
 	}
 	return rc;
+}
+std::string getCanonical(const std::string& s){
+    return std::min(s,reverseComplement(s));
 }

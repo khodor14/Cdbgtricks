@@ -68,7 +68,7 @@ void modify_unitig(std::string unitig,std::vector<uint64_t> hash_kmers,int k){
                 i=0;
                 possible_modifications.clear();
             }
-            //elongation from left is found
+            //elongation from right is found
             else if(i==unitig.length()-k && possible_modifications.size()==1 && std::get<1>(std::get<2>(*possible_modifications.begin()))&& std::get<2>(std::get<2>(*possible_modifications.begin()))){
                 unitig.push_back(std::get<1>(*possible_modifications.begin()));//need to correct also all the out-neighbor nodes
                 i=unitig.length()-k;

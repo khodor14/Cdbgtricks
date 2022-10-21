@@ -1,11 +1,20 @@
 #include <ParseGFA.hpp>
 #include <iostream>
-GfaGraph::GfaGraph:
+
+Node::Node :
+int Node::get_id(){
+	return id;
+}
+std::string Node::get_unitig(){
+	return unitig;
+}
+GfaGraph::GfaGraph :
 
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
     std::ifstream file{filename};
     return LoadFromStream(file);
 }
+
 GfaGraph GfaGraph::LoadFromStream(std::istream& file){
 	GfaGraph graph;
 	while (file.good())
@@ -25,7 +34,7 @@ GfaGraph GfaGraph::LoadFromStream(std::istream& file){
 			assert(dummy == "S");
 			sstr >> idstr;
 			sstr >> seq;
-            size_t id=stoi(idstr)
+            size_t id=stoi(idstr);
             structNode node;
             node.id=id;
             node.sequence=seq;
@@ -76,11 +85,53 @@ GfaGraph GfaGraph::LoadFromStream(std::istream& file){
 
 	return result;
 }
-void convertToFasta(){
+ void GfaGraph::convertToFasta(){
     string filenameout("out_1.fa");
 	ofstream out(filenameout);
 	for(uint i(0),i<this.nodes.size(),++i){
 		out<<">sequence"+to_string(i)<<endl;
 		out<<this.nodes[i].sequence<<endl;
 	}
+}
+std::vector<int> GfaGraph::find_in_neighbors(int node_id){
+	std::vector<int> in_neighbors;
+	auto iter_edges=edges.begin();
+	while(iter_edges!=edges.end()){
+		if(iter_edges->source==node_id){
+			in_neighbors.push_back(iter_edges->sink);
+		}
+		iter_edges++;
+	}
+	return in_neighbors;
+}
+std::vector<int> GfaGraph::find_out_neighbors(int node_id){
+	std::vector<int> out_neighbors;
+	auto iter_edges=edges.begin();
+	while(iter_edges!=edges.end()){
+		if(iter_edges->sink==node_id){
+			out_neighbors.push_back(iter_edges->source);
+		}
+		iter_edges++;
+	}
+	return out_neighbors;	
+}
+void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
+
+}
+void GfaGraph::fixe_node(int node_id,int pos_modification){
+
+}
+int GfaGraph::create_nodes(std::string sequence){//return the node id
+	int new_id=nodes.size()+1;
+	Node new_node;
+	new_node.ide=new_id;
+	new_node.unitig=sequence;
+	nodes.push_back(new_id);
+	return new_id;
+}
+void GfaGraph::create_edge(int node_id,int new_node_id,bool from,bool to){
+
+}
+std::vector<Node> GfaGraph::get_nodes(){
+	return nodes;
 }

@@ -7,3 +7,4 @@ uint64_t hash(std::string kmer);
 char complement(char c);
 void createHashTable(std::ifstream& readStructFile,std::vector<uint64_t> & hashes);
 std::string reverseComplement(const std::string& s);
+std::string getCanonical(const std::string& s);
