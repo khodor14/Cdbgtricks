@@ -50,10 +50,32 @@ void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int po
         }
     }
 }
-void Index::update_unitig(Node & unitig,int previous_id,int k){
-    int id=unitig.get_id();
-    std::string seq=unitig.get_unitig();
+void Index::update_unitig(std::string seq,int id,int previous_id,int k){
+
     for(int i=0;i<seq.length()-k+2;i++){
         update_k_1_mer(seq.substr(i,i+k-1),previous_id,id,i);
     }
+}
+void Index::add_unitig(std::string unitig,int id,int k){
+
+        for(int i=0;i<unitig.length()-k+2;i++){
+            std::string sub=unitig.substr(i,i+k-1);
+            std::string rc=getCanonical(sub);
+            std::string toStore=std::min(sub,rc);
+            bool orientation=true;
+            if(std::strcmp(sub.c_str(),rc.c_str())>0){
+                orientation=false;
+            }
+            if(index_table.find(toStore)==index_table.end()){
+                    std::vector<std::tuple<int,int,bool>> data;
+                    data.push_back(std::tuple<int,int,bool>(id,i,orientation));
+                    index_table[toStore]=data;
+            }
+            else{
+                std::vector<std::tuple<int,int,bool>> data=index_table.at(toStore);
+                data.push_back(std::tuple<int,int,bool>(id,i,orientation));
+                index_table[toStore]=data;
+
+            }
+        }
 }

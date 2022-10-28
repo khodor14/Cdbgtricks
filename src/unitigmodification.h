@@ -1,6 +1,10 @@
 #include <CommonUtils.h>
 #include <ParseGFA.h>
 #include <iostream>
-void search_modifications(std::string k_1_mer,std::vector<uint64_t> hash_kmers,std::vector<std::tuple<int,char,std::tuple<int,bool,bool>>> possible_modifications);
-void modify_unitig(std::string unitig,std::vector<uint64_t> hash_kmers);
-static GfaGraph modify_graph(GfaGraph g,std::vector<uint64_t> hash_kmers);
+#include <index_kmer.h>
+#include <unordered_map>
+std::tuple<std::string,int,std::string,int> split_unitig(std::string unitig,int id,int new_id,int position,int k);
+std::tuple<std::string,int> join(std::string unitig1,std::string unitig2,int id,int k);
+std::string compact(std::string unitig,std::string kmer,bool conact_position);
+void modify_unitigs(std::string kmer,Index & table,std::unordered_map<int,std::string> unitigs);
+
