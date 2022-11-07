@@ -20,7 +20,9 @@ private:
     bool from=true;
     bool to=true;
 public:
-    edge(/* args */);
+    edge(int sink,int source,bool from,bool to);
+    int get_source();
+    int get_sink();
     ~edge();
     bool operator!=(edge &other);
 
@@ -33,7 +35,8 @@ private:
     std::vector<edge> edges;
 public:
     GfaGraph(/* args */);
-    static GfaGraph LoadFromFile(std::string filename);
+    GfaGraph LoadFromFile(std::string filename);
+    GfaGraph LoadFromStream(std::ifstream &file);
     void convertToFasta();
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
