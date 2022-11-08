@@ -1,6 +1,8 @@
+#include <fstream>
+#include <cstring>
 #include <iostream>
-#include <cmath>
-
+#include <vector>
+#include <algorithm>
 size_t baseToInt(char base);
 uint64_t hash(uint64_t key);
 uint64_t hash(std::string kmer);
@@ -8,3 +10,4 @@ char complement(char c);
 void createHashTable(std::ifstream& readStructFile,std::vector<uint64_t> & hashes);
 std::string reverseComplement(const std::string& s);
 std::string getCanonical(const std::string& s);
+bool isCanonical(const std::string& seq);

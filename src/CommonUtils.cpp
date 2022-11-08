@@ -1,9 +1,10 @@
-
-#include <CommonUtils.h>
-#include <iostream>
 #include <fstream>
 #include <cstring>
+#include <iostream>
+#include <vector>
 #include <algorithm>
+#include <unordered_set>
+#include <sstream>
 size_t baseToInt(char base){
     switch (base)
     {
@@ -14,7 +15,7 @@ size_t baseToInt(char base){
     case 'C':
         return 1;
     case 'g':
-    case "G":
+    case 'G':
         return 2;
     case 't':
     case 'T':
@@ -56,6 +57,7 @@ void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
         hashes.push_back(hash(next_kmer));
     }
 }
+
 char complement(char c){
  switch(c){
     case 'A':
@@ -81,4 +83,31 @@ std::string reverseComplement(const std::string& s){
 }
 std::string getCanonical(const std::string& s){
     return std::min(s,reverseComplement(s));
+}
+
+bool isCanonical(const std::string& seq){
+	if (seq.size() > 1){
+		char first(seq[0]);
+		char last(complement(seq[seq.size()-1]));
+		if (first < last){
+			return true;
+		} else {
+			if (first == last){
+				std::string seq2(seq.substr(1,seq.size()-2));
+				return isCanonical(seq2);
+			} else {
+				return false;
+			}
+		}
+	} else {
+		if (seq.size() == 1){
+			switch(seq[0]){
+				case 'A': return true;
+				case 'C': return true;
+			}
+			return false;
+		} else {
+			return true;
+		}
+	}
 }

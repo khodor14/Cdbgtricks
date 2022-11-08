@@ -1,9 +1,10 @@
-#include <ParseGFA.h>
+#include "ParseGFA.h"
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <cassert>
 #include <fstream>
+#include <vector>
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -29,11 +30,11 @@ int edge::get_source(){
 	return source;
 }
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
-    std::ifstream file{filename};
+    std::ifstream file{filename, std::ios::in};
     return LoadFromStream(file);
 }
 
-GfaGraph GfaGraph::LoadFromStream(std::ifstream& file){
+GfaGraph GfaGraph::LoadFromStream(std::ifstream &file){
 	GfaGraph graph;
 	while (file.good())
 	{

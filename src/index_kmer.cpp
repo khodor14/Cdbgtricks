@@ -1,7 +1,10 @@
-#include <index_kmer.h>
-#include <CommonUtils.h>
+#include "index_kmer.h"
+#include "CommonUtils.h"
 #include <algorithm>
 #include <cstring>
+#include <vector>
+#include <string>
+#include <tuple>
 
 Index::Index(int buckets){
     number_of_buckets=buckets;
@@ -35,9 +38,13 @@ void Index::create(GfaGraph& graph,int k){
 
             }
         }
+        iter_nodes++;
 	}
 }
 std::vector<std::tuple<int,int,bool>> Index::find(std::string kmer){
+    if(index_table.find(getCanonical(kmer))==index_table.end()){
+        return std::vector<std::tuple<int,int,bool>>();
+    }
     return index_table.at(getCanonical(kmer));
 }
 void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int position){

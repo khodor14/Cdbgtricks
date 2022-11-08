@@ -1,5 +1,5 @@
 #include <string>
-#include <ParseGFA.h>
+#include "ParseGFA.h"
 #include <vector>
 #include <unordered_map>
 class Index
@@ -33,6 +33,6 @@ public:
 
     //adding a new created unitig
     void add_unitig(std::string unitig,int id,int k);
-    ~Index();
+    ~Index()=default;
 };
 
