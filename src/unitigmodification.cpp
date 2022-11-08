@@ -2,6 +2,92 @@
 #include <CommonUtils.h>
 #include <strings.h>
 #include<algorithm>
+#include <vector>
+std::vector<std::tuple<std::string,bool>> extend_right(std::string kmer,bool reverse, std::unordered_map<std::string,bool> kmers){
+    std::vector<std::tuple<std::string,bool>> results;
+    std::string alphabet="ACTG";
+    for(int i=0;i<4;i++){
+        if(kmers.find(kmer+alphabet[i])!=kmers.end()){//check if we add a character from right to (k-1)-mer is in the kmers
+            results.push_back(std::tuple<std::string,bool>(kmer+alphabet[i],reverse));
+        }
+    } 
+    return results;
+}
+std::vector<std::tuple<std::string,bool>> extend_left(std::string kmer,bool reverse, std::unordered_map<std::string,bool> kmers){
+    std::vector<std::tuple<std::string,bool>> results;
+    std::string alphabet="ACTG";
+    for(int i=0;i<4;i++){
+        if(kmers.find(alphabet[i]+kmer)!=kmers.end()){//check if we add a character from left to (k-1)-mer is in the kmers
+            results.push_back(std::tuple<std::string,bool>(kmer+alphabet[i],reverse));
+        }
+    }
+    return results;
+}
+std::vector<std::tuple<std::string,bool>> possible_extension_left(std::string kmer, std::unordered_map<std::string,bool> kmers){
+    std::vector<std::tuple<std::string,bool>> results_left=extend_left(kmer.substr(1,kmer.length()),false,kmers);
+    std::vector<std::tuple<std::string,bool>> results_right=extend_left(reverseComplement(kmer.substr(1,kmer.length())),true,kmers);
+
+    for(auto current_element:results_right){ //add right to left
+        results_left.push_back(current_element);
+    }
+
+    return results_left;
+}
+std::vector<std::tuple<std::string,bool>> possible_extension_right(std::string kmer, std::unordered_map<std::string,bool> kmers){
+    std::vector<std::tuple<std::string,bool>> results_left=extend_left(reverseComplement(kmer.substr(1,kmer.length())),true,kmers);
+    std::vector<std::tuple<std::string,bool>> results_right=extend_left(kmer.substr(1,kmer.length()),false,kmers);
+    for(auto current_element:results_left){ //add left to right
+        results_right.push_back(current_element);
+    }
+
+    return results_right;
+}
+std::string extend(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> kmers){
+    //we extend from right
+    std::string result=kmer;
+    while(true){//as long as we can extend
+        std::vector<std::tuple<std::string,bool>> results_left=possible_extension_left(kmer,kmers);
+        std::vector<std::tuple<std::string,bool>> result_right=possible_extension_right(kmer,kmers);
+
+        //to extend left should be empty and right should have one element
+
+        if(results_left.size()==0 && result_right.size()==1){
+            std::tuple<std::string,bool> extension=result_right.front();
+
+            std::string to_extend=std::get<0>(extension);//the kmer to be extended with our string input kmer
+            bool reverse=std::get<1>(extension);
+            kmers[to_extend]=true;// set it to true because we used it
+            if(reverse){
+                to_extend=reverseComplement(to_extend);//if we find it in reverse complement reverse it
+            }
+            result=result+to_extend[to_extend.length()-1];// add the last character to the result
+            if(unitig_index.find(to_extend.substr(1,to_extend.length())).size()>0){//the suffix of the k-mer found is in the graph stop extension
+                break;
+            }
+        }
+        else{
+            //either we have more than one extension from right or we have left extensions
+            break;
+        }
+    }
+    return result;
+}
+std::string unitig_from_kmers(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> kmers){
+    std::string right=extend(kmer,unitig_index,kmers);//extend the right of the kmer
+    std::string left=reverseComplement(extend(reverseComplement(kmer),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
+
+    return left+right.substr(kmer.length(),right.length());//return the concatination of left and right. Omit the first k characters of right because they are the suffix of left
+}
+std::vector<std::string> construct_unitigs_from_kmer(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> kmers){
+    std::vector<std::string> unitigs_set;
+    for (std::pair<std::string, bool> element : kmers)
+    {
+        if(!element.second){//if this k-mer was not used in any unitig
+            kmers[element.first]=true;
+            unitigs_set.push_back(unitig_from_kmers(element.first,unitig_index,kmers));//create unitig from this k-mer
+        }
+    }
+}
 std::tuple<std::string,int,std::string,int> split_unitig(std::string unitig,int id,int new_id,int position,int k){
     std::string prefix=unitig.substr(0,unitig.length()-position+k-1);
     std::string suffix=unitig.substr(0,position);
