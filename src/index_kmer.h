@@ -1,7 +1,11 @@
 #include <string>
+#include "CommonUtils.h"
 #include "ParseGFA.h"
 #include <vector>
 #include <unordered_map>
+
+#ifndef index_kmer_H
+#define index_kmer_H
 class Index
 {
 private:
@@ -35,4 +39,4 @@ public:
     void add_unitig(std::string unitig,int id,int k);
     ~Index()=default;
 };
-
+#endif // !index_kmer_H

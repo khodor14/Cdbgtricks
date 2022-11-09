@@ -3,8 +3,9 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <unordered_set>
+#include <unordered_map>
 #include <sstream>
+#include "CommonUtils.h"
 size_t baseToInt(char base){
     switch (base)
     {
@@ -57,7 +58,42 @@ void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
         hashes.push_back(hash(next_kmer));
     }
 }
+std::unordered_map<std::string,bool> createHashTable(std::string file_name){
+    /*
+    input is a file name of kmers, the output of kmtricks pipeline
+    output is a hash table kmers->boolean
 
+    the boolean will be used later to indicate weither the kmer was used in a unitig or not
+    */
+    std::ifstream file{file_name, std::ios::in};
+    std::string line;
+    std::unordered_map<std::string,bool> result;// we store here out kmers
+    while(getline(file,line)){
+        //getline(kmers,line);
+        std::stringstream sstr {line};
+        std::string next_kmer;//the kmer in the line
+        std::string next_abundance;//kmer output the abundance, for now we don't use it
+
+        sstr >> next_kmer;
+        sstr >> next_abundance;
+        result[getCanonical(next_kmer)]=false;
+    }
+    return result;
+}
+void write_unitigs_constructed_to_fasta(std::vector<std::string> unitigs){
+    /*
+    This function takes the vector of unitigs as input
+    It writes this unitigs to a fasta file
+    */
+    std::string filenameout("unitigs_constructed.fa");//the name of the file
+	std::ofstream out(filenameout);//create the file
+    int i=1;//identifier of each unitig, temporary
+	for(auto unitig:unitigs){//loop over all unitigs
+		out<<">sequence"+std::to_string(i)<<std::endl;//write the header in fasta format
+		out<<unitig<<std::endl;//write the unitig
+        i++;//increment 
+	}
+}
 char complement(char c){
  switch(c){
     case 'A':

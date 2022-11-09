@@ -1,11 +1,11 @@
-#include <unitigmodification.h>
-#include <CommonUtils.h>
+#include "unitigmodification.h"
+#include "CommonUtils.h"
 #include <strings.h>
 #include<algorithm>
 #include <vector>
+#include <unordered_map>
 
-
-std::vector<char> possible_right_extension(std::string mer,std::unordered_map<std::string,bool> kmers_to_add_to_graph){
+std::vector<char> possible_right_extension(std::string mer,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
     /*
     the input is :a string (k-1)-mer to be extended from the right
                  :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
@@ -26,10 +26,11 @@ std::vector<char> possible_right_extension(std::string mer,std::unordered_map<st
         }
    }
    //return the resultant vector
+   std::cout<<mer<<" "<<possible_character_for_extension.size()<<std::endl;
    return possible_character_for_extension;
 
 }
-std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_map<std::string,bool> kmers_to_add_to_graph){
+std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
     /*
     the input is: a string k-mer representing the k-mer to be extended from right
                 :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
@@ -40,14 +41,13 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
    int k_mer_length=kmer.length();
    std::string extended_kmer=kmer;
    std::string suffix=kmer.substr(1,kmer.length());//taking the suffix of the kmer to extend it
-   
   while (true)//as long as we can extended the (k-1)-mer suffix of the k-mer
   {
     /*
     if the (k-1)-mer suffix of the k-mer is not in the graph
     we can try to extends
     */
-
+   
    if(unitigs_index.find(suffix).size()==0){
     
     
@@ -64,9 +64,11 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
-
-            extended_kmer.append(1,character_to_add);//append it to the string only once, the append function takes as argument the number of times we need to append to a string
-            suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
+            std::string key=suffix+character_to_add;
+            kmers_to_add_to_graph[getCanonical(key)]=true;
+            extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
+            suffix=suffix.substr(1,suffix.size())+character_to_add;
+            //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
         }
         else{
             //we have zero or more than 1 possible right extension of the (k-1)-mer
@@ -86,21 +88,22 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
    //return the resultant k-mer
     return extended_kmer;
 }
-std::string unitig_from_kmers(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> kmers){
+std::string unitig_from_kmers(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> &kmers){
     std::string right=extend_right(kmer,unitig_index,kmers);//extend the right of the kmer
     std::string left=reverseComplement(extend_right(reverseComplement(kmer),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
-
     return left+right.substr(kmer.length(),right.length());//return the concatination of left and right. Omit the first k characters of right because they are the suffix of left
 }
-std::vector<std::string> construct_unitigs_from_kmer(std::string kmer,Index &unitig_index, std::unordered_map<std::string,bool> kmers){
+std::vector<std::string> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<std::string,bool> &kmers){
     std::vector<std::string> unitigs_set;
     for (std::pair<std::string, bool> element : kmers)
     {
         if(!element.second){//if this k-mer was not used in any unitig
             kmers[element.first]=true;
-            unitigs_set.push_back(unitig_from_kmers(element.first,unitig_index,kmers));//create unitig from this k-mer
+            std::string res=unitig_from_kmers(element.first,unitig_index,kmers);
+            unitigs_set.push_back(res);//create unitig from this k-mer
         }
     }
+    return unitigs_set;
 }
 std::tuple<std::string,int,std::string,int> split_unitig(std::string unitig,int id,int new_id,int position,int k){
     std::string prefix=unitig.substr(0,unitig.length()-position+k-1);
