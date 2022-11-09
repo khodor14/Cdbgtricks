@@ -1,4 +1,10 @@
 #include <vector>
+#include <fstream>
+#include <string>
+#include <vector>
+#ifndef ParseGFA_H
+#define ParseGFA_H
+
 class Node
 {
 private:
@@ -8,7 +14,7 @@ public:
     Node(int id,std::string unitig);
     int get_id();
     std::string get_unitig();
-    ~Node();
+    ~Node() = default;
     bool operator!=(const Node& other);
 };
 
@@ -23,7 +29,7 @@ public:
     edge(int sink,int source,bool from,bool to);
     int get_source();
     int get_sink();
-    ~edge();
+    ~edge() = default;
     bool operator!=(edge &other);
 
 };
@@ -34,9 +40,9 @@ private:
     std::vector<Node> nodes;
     std::vector<edge> edges;
 public:
-    GfaGraph(/* args */);
-    GfaGraph LoadFromFile(std::string filename);
-    GfaGraph LoadFromStream(std::ifstream &file);
+    GfaGraph() = default;
+    static GfaGraph LoadFromFile(std::string filename);
+    static GfaGraph LoadFromStream(std::ifstream & file);
     void convertToFasta();
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
@@ -45,6 +51,8 @@ public:
     void fixe_node(int node_id,int pos_modification);
     int create_nodes(std::string sequence);//return the node id
     void create_edge(int node_id,int new_node_id,bool from,bool to);
-    ~GfaGraph();
+    ~GfaGraph() = default;
 };
+
+#endif // !ParseGFA_H
 
