@@ -104,3 +104,33 @@ std::vector<std::string> construct_unitigs_from_kmer(Index &unitig_index, std::u
     }
     return unitigs_set;
 }
+void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,int position,int k){
+    /*
+    The input are:
+                the unitigs of the graph
+                the index
+                the id of unitig to split
+                the position
+                the size of (k-1)-mer
+    
+    Actions performed: split the unitig whose id is the parameter id at the given position into left and right
+                        create a new unitig whose id is the number of unitigs+1 and its sequence is the right portion
+                        insert the first (k-1)-mer of right in the index
+                        update the id and positions of all (k-1)-mers of right starting at 1
+                        insert the new unitig into the unitig sets
+    */
+    int new_id=graph_unitigs.size();//new id
+    std::string original_unitig=graph_unitigs.at(id);//get the unitig to split
+    std::string left=original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
+    std::string right=original_unitig.substr(position,original_unitig.length()-position);//take the right from position till the end
+    graph_unitigs[id]=left;//keep the id but change the unitig
+    ind.insert(right.substr(0,k),new_id,0);//insert first (k-1)-mer into index
+    ind.update_unitig(right,new_id,id,1,right.length()-k-1);//update the id and position of all other (k-1)-mers
+    graph_unitigs[new_id]=right;//insert the right portion into the data struction
+
+
+    /*
+        Note:this implementation needs to be oprimised
+    */
+
+}
