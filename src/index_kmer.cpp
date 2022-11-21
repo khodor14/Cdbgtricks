@@ -11,13 +11,15 @@ Index::Index(int buckets,int k_size){
     number_of_buckets=buckets;
     index_table.rehash(number_of_buckets);
 }
-
+int Index::get_k(){
+    return k;
+}
 void Index::create(GfaGraph& graph){
-    std::vector<Node> nodes=graph.get_nodes();
+    std::unordered_map<int,std::string> nodes=graph.get_nodes();
     auto iter_nodes=nodes.begin();
-    while(iter_nodes!=nodes.end()){
-        int id=iter_nodes->get_id();
-        std::string unitig=iter_nodes->get_unitig();
+   for (std::pair<int, std::string> node : nodes){
+        int id=node.first;
+        std::string unitig=node.second;
         int i=0;
         for(int i=0;i<=unitig.length()-k+1;++i){
             std::string sub=unitig.substr(i,k-1);

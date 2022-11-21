@@ -56,8 +56,7 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file){
 			sstr >> seq;
 			assert(seq.size() >= 1);
             int id=stoi(idstr);
-            Node node=Node(id,seq);
-			graph.nodes.push_back(node);
+			graph.unitigs[id]=seq;
 		}
 		if (line[0] == 'L')
 		{
@@ -103,9 +102,9 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file){
  void GfaGraph::convertToFasta(){
     std::string filenameout("out_1.fa");
 	std::ofstream out(filenameout);
-	for(uint i(0);i<nodes.size();++i){
+	for(uint i(0);i<unitigs.size();++i){
 		out<<">sequence"+std::to_string(i)<<std::endl;
-		out<<nodes[i].get_unitig()<<std::endl;
+		out<<unitigs[i]<<std::endl;
 	}
 }
 std::vector<int> GfaGraph::find_in_neighbors(int node_id){
@@ -133,18 +132,6 @@ std::vector<int> GfaGraph::find_out_neighbors(int node_id){
 void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 
 }
-void GfaGraph::fixe_node(int node_id,int pos_modification){
-
-}
-int GfaGraph::create_nodes(std::string sequence){//return the node id
-	int new_id=nodes.size()+1;
-	Node new_node=Node(new_id,sequence);
-	nodes.push_back(new_node);
-	return new_id;
-}
-void GfaGraph::create_edge(int node_id,int new_node_id,bool from,bool to){
-
-}
-std::vector<Node> GfaGraph::get_nodes(){
-	return nodes;
+std::unordered_map<int,std::string> GfaGraph::get_nodes(){
+	return unitigs;
 }

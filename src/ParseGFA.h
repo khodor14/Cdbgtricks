@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #ifndef ParseGFA_H
 #define ParseGFA_H
 
@@ -37,7 +38,7 @@ public:
 class GfaGraph
 {
 private:
-    std::vector<Node> nodes;
+    std::unordered_map<int,std::string> unitigs;
     std::vector<edge> edges;
 public:
     GfaGraph() = default;
@@ -46,11 +47,8 @@ public:
     void convertToFasta();
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
-    std::vector<Node> get_nodes();
+    std::unordered_map<int,std::string> get_nodes();
     void fixe_edges(int node_id,int new_node, bool from, bool to);
-    void fixe_node(int node_id,int pos_modification);
-    int create_nodes(std::string sequence);//return the node id
-    void create_edge(int node_id,int new_node_id,bool from,bool to);
     ~GfaGraph() = default;
 };
 
