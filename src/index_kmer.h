@@ -25,7 +25,7 @@ public:
 
     //create it from the unitigs of the graph
     void create(GfaGraph & graph);
-
+    int get_k();
     //this function returns the index of a (k-1)-mer, its all occurences which is equal to 8 at max
     std::vector<std::tuple<int,int,bool>> find(std::string k_1_mer);
 
