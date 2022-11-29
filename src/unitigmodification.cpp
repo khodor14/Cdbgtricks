@@ -316,3 +316,33 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
     id++;
    }
 }
+std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const std::unordered_map<int,std::string>& constructed_unitigs,int k){
+    /*
+    This function takes the constructed unitigs and build an index for them
+    It returns an index:
+        for each unitig u:
+                    (k-1) suffix of u ->(id of u,0,orientation)
+                    (k-1) prefix of u ->(id of u,|u|-k+1,orientation)
+        each suffix or prefix is associated with a vector of occurences in the constructed unitigs
+    */
+  std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index;//empty index
+  for(std::pair<int,std::string> elem:constructed_unitigs){//go over the constructed unitigs
+    std::string prefix=elem.second.substr(0,k-1);//the prefix of unitig u=elem.second
+    if(index.find(getCanonical(prefix))==index.end()){//if it's not stored yet
+        std::vector<std::tuple<int,int,bool>> v;//create an empty vector
+        index[getCanonical(prefix)]=v;//associate v to this (k-1)-mer
+    }
+    std::string suffix=elem.second.substr(elem.second.length()-k+1);//suffix of u
+    if(index.find(getCanonical(suffix))==index.end()){//not stored yet
+        std::vector<std::tuple<int,int,bool>> v;//empty vector
+        index[getCanonical(suffix)]=v;//associate v to (k-1)-mer
+    }
+    std::vector<std::tuple<int,int,bool>> pref=index.at(getCanonical(prefix));//get the occurences of prefix
+    pref.push_back(std::tuple<int,int,bool>(elem.first,0,isCanonical(prefix)));//add the new occurence to the vector
+    index[getCanonical(prefix)]=pref;//store back the vector
+    std::vector<std::tuple<int,int,bool>> suf=index.at(getCanonical(suffix));//get the occurences of suffix
+    pref.push_back(std::tuple<int,int,bool>(elem.first,elem.second.length()-k+1,isCanonical(suffix)));//add the new occurence
+    index[getCanonical(suffix)]=suf;//store back the occurences of suffix
+  }
+  return index;//return the constructed index
+}
