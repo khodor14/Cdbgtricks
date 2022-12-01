@@ -5,6 +5,9 @@
 #include <cassert>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <cstring>
+
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -31,11 +34,35 @@ int edge::get_source(){
 }
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
     std::ifstream file{filename, std::ios::in};
-    return LoadFromStream(file);
+	if(filename.length()>4 && !std::strcmp(filename.substr(filename.length()-3).c_str(),"gfa")){
+		std::cout<<filename<<" gfa\n";
+		return LoadFromStream(file,true);
+	}
+    else{
+		std::cout<<filename<<" fasta\n";
+		return LoadFromStream(file,false);
+	}
 }
-
-GfaGraph GfaGraph::LoadFromStream(std::ifstream &file){
+GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
+	/*
+	the input is a input stream file representing the graph in gfa or fasta
+	if gfa is true then the graph is int gfa else it is in fasta
+	*/
 	GfaGraph graph;
+	if(!gfa){
+		int id=1;
+		while (file.good())
+		{
+			std::string line = "";
+			std::getline(file, line);
+			if (line.size() == 0 && !file.good()) break;
+			if (line.size() == 0) continue;
+			if(line[0]=='>') continue;	
+			graph.unitigs[id]=line;
+			id++;
+		}
+		return graph;
+	}
 	while (file.good())
 	{
 		std::string line = "";

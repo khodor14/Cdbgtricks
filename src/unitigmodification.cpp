@@ -128,17 +128,20 @@ void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,
     ind.insert(right.substr(0,k),new_id,0);//insert first (k-1)-mer into index
     ind.update_unitig(right,new_id,id,1,right.length()-k-1);//update the id and position of all other (k-1)-mers
     graph_unitigs[new_id]=right;//insert the right portion into the data struction
+    std::cout<<"Unitig "<<id<<" is splitted at "<<position<<"\n";
     /*
         Note:this implementation needs to be oprimised
     */
 }
 int decision(const std::vector<std::tuple<int,int,bool>> &occ_graph,const std::vector<std::tuple<int,int,bool>> &occ_unitigs,const std::unordered_map<int,std::string> &unitigs,int k){
     int decision=0;//0 for nothing,1 for split, 2 for merge
+    if(occ_graph.size()==0){
+        return decision;
+    }
     std::tuple<int,int,bool> first_occ=occ_graph.front();
     std::string unitig=unitigs.at(std::get<0>(first_occ));
     int pos=std::get<1>(first_occ);
-
-    if((pos==0 || pos==unitig.length()-k+1) && occ_graph.size()==1 && occ_unitigs.size()==1){
+    if((pos==0 || pos==unitig.length()-k+1) && (occ_graph.size()==1 && occ_unitigs.size()==1)){
         decision=2;//merge
     }
     else if(pos>0 && pos<unitig.length()-k+1){
@@ -168,6 +171,8 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
    std::tuple<std::string,bool> concat=can_we_merge(position_unitig,position_graph,orientation_unitig,orientation_graph,constructed_unitig,graph_u,index_graph);//concatinate the unitigs if possible
    std::string merged=std::get<0>(concat);
    if(merged.length()>0){//the strings get concatinated
+        std::cout<<"Unitig "<<id_graph<<" is merged with a constructed unitig\n";
+
         /*
             try to check if the second (k-1)-mer extremity of the constructed unitig is extremity of one unitig in the graph
             if yes check and merge this unitig with the constructed unitig then merge all three
@@ -177,7 +182,6 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
                                                                         --------------------------------- unitig graph 2
         */
        int position2_u=abs(position_unitig-constructed_unitig.length()+index_graph.get_k()-1);//if its prefix then position1=0 and position2=|u|-k+1, if pos1=|u|-k+1 then pos2=0 so pos2=|pos1-|u|+k-1|
-       std::cout<<position2_u;
        std::vector<std::tuple<int,int,bool>> occ_g=index_graph.find(constructed_unitig.substr(position2_u,index_graph.get_k()-1));
        std::vector<std::tuple<int,int,bool>> occ_u=unitig_index.at(getCanonical(constructed_unitig.substr(position2_u,index_graph.get_k()-1)));
 
@@ -209,7 +213,6 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
                index_graph.update_unitig(merged,std::get<0>(occ_g.front()),id_graph,merged.length()-graph_unitigs.at(id_graph).length(),merged.length()-index_graph.get_k()-1);//update the id and position of the k-1 mer of the unitig used for merge
                graph_unitigs[std::get<0>(occ_g.front())]=merged;
                graph_unitigs.erase(id_graph);//remove the unitig used for merge
-
             }
             else{
                 /*
@@ -296,17 +299,16 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
 
         it merge these set of unitigs by calling appropriate functions    
     */
-
-   for(std::pair<std::string,std::vector<std::tuple<int,int,bool>>> elem:unitig_index){
-    std::string mer_unitig=elem.first;
-    std::vector<std::tuple<int,int,bool>> graph_occ=graph_index.find(mer_unitig);//all occurrences in the graph
-    int dec=decision(graph_occ,elem.second,graph_unitigs,graph_index.get_k());//find the decision of split or merge or nothing
-    if(dec==1){//split
-        split(graph_unitigs,graph_index,std::get<0>(graph_occ.front()),std::get<1>(graph_occ.front()),graph_index.get_k());
-    }
-    else if(dec==2){//merge
-        checkAndMerge(graph_occ.front(),elem.second.front(),unitig_index,graph_index,graph_unitigs,constructed_unitigs);
-    }    
+    for(std::pair<std::string,std::vector<std::tuple<int,int,bool>>> elem:unitig_index){
+        std::string mer_unitig=elem.first;
+        std::vector<std::tuple<int,int,bool>> graph_occ=graph_index.find(mer_unitig);//all occurrences in the graph
+        int dec=decision(graph_occ,elem.second,graph_unitigs,graph_index.get_k());//find the decision of split or merge or nothing
+        if(dec==1){//split
+            split(graph_unitigs,graph_index,std::get<0>(graph_occ.front()),std::get<1>(graph_occ.front()),graph_index.get_k());
+        }
+        else if(dec==2){//merge
+            checkAndMerge(graph_occ.front(),elem.second.front(),unitig_index,graph_index,graph_unitigs,constructed_unitigs);
+        }    
    }
 
    //add the remaining constructed unitigs to the unitigs of the graph
@@ -328,12 +330,12 @@ std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_cons
   std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index;//empty index
   for(std::pair<int,std::string> elem:constructed_unitigs){//go over the constructed unitigs
     std::string prefix=elem.second.substr(0,k-1);//the prefix of unitig u=elem.second
-    if(index.find(getCanonical(prefix))==index.end()){//if it's not stored yet
+    if(index.count(getCanonical(prefix))==0){//if it's not stored yet
         std::vector<std::tuple<int,int,bool>> v;//create an empty vector
         index[getCanonical(prefix)]=v;//associate v to this (k-1)-mer
     }
     std::string suffix=elem.second.substr(elem.second.length()-k+1);//suffix of u
-    if(index.find(getCanonical(suffix))==index.end()){//not stored yet
+    if(index.count(getCanonical(suffix))==0){//not stored yet
         std::vector<std::tuple<int,int,bool>> v;//empty vector
         index[getCanonical(suffix)]=v;//associate v to (k-1)-mer
     }
@@ -341,7 +343,7 @@ std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_cons
     pref.push_back(std::tuple<int,int,bool>(elem.first,0,isCanonical(prefix)));//add the new occurence to the vector
     index[getCanonical(prefix)]=pref;//store back the vector
     std::vector<std::tuple<int,int,bool>> suf=index.at(getCanonical(suffix));//get the occurences of suffix
-    pref.push_back(std::tuple<int,int,bool>(elem.first,elem.second.length()-k+1,isCanonical(suffix)));//add the new occurence
+    suf.push_back(std::tuple<int,int,bool>(elem.first,elem.second.length()-k+1,isCanonical(suffix)));//add the new occurence
     index[getCanonical(suffix)]=suf;//store back the occurences of suffix
   }
   return index;//return the constructed index
