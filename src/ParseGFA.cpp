@@ -5,6 +5,9 @@
 #include <cassert>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <cstring>
+
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -31,11 +34,42 @@ int edge::get_source(){
 }
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
     std::ifstream file{filename, std::ios::in};
-    return LoadFromStream(file);
+	if(filename.length()>4 && !std::strcmp(filename.substr(filename.length()-3).c_str(),"gfa")){
+		return LoadFromStream(file,true);
+	}
+    else{
+		return LoadFromStream(file,false);
+	}
 }
-
-GfaGraph GfaGraph::LoadFromStream(std::ifstream &file){
+GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
+	/*
+	the input is a input stream file representing the graph in gfa or fasta
+	if gfa is true then the graph is int gfa else it is in fasta
+	*/
 	GfaGraph graph;
+	if(!gfa){
+		int id=0;
+		std::string line, DNA_sequence;
+
+		while(std::getline(file, line)) {
+
+			// line may be empty so you *must* ignore blank lines
+			// or you have a crash waiting to happen with line[0]
+			if(line.empty())
+				continue;
+
+			if (line[0] == '>') {
+				// output previous line before overwriting id
+				// but ONLY if id actually contains something
+				DNA_sequence.clear();
+			}
+			else {//  if (line[0] != '>'){ // not needed because implicit
+				DNA_sequence += line;
+				graph.unitigs[++id]=DNA_sequence;
+			}
+		}
+		return graph;
+	}
 	while (file.good())
 	{
 		std::string line = "";

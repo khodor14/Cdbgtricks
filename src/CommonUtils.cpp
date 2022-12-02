@@ -80,18 +80,16 @@ std::unordered_map<std::string,bool> createHashTable(std::string file_name){
     }
     return result;
 }
-void write_unitigs_constructed_to_fasta(std::vector<std::string> unitigs){
+void write_unitigs_to_fasta(std::unordered_map<int,std::string> unitigs,std::string filename){
     /*
     This function takes the vector of unitigs as input
     It writes this unitigs to a fasta file
     */
-    std::string filenameout("unitigs_constructed.fa");//the name of the file
+    std::string filenameout(filename);//the name of the file
 	std::ofstream out(filenameout);//create the file
-    int i=1;//identifier of each unitig, temporary
 	for(auto unitig:unitigs){//loop over all unitigs
-		out<<">sequence"+std::to_string(i)<<std::endl;//write the header in fasta format
-		out<<unitig<<std::endl;//write the unitig
-        i++;//increment 
+		out<<">sequence"+std::to_string(unitig.first)<<std::endl;//write the header in fasta format
+		out<<unitig.second<<std::endl;//write the unitig
 	}
 }
 char complement(char c){

@@ -16,7 +16,6 @@ int Index::get_k(){
 }
 void Index::create(GfaGraph& graph){
     std::unordered_map<int,std::string> nodes=graph.get_nodes();
-    auto iter_nodes=nodes.begin();
    for (std::pair<int, std::string> node : nodes){
         int id=node.first;
         std::string unitig=node.second;
@@ -25,7 +24,7 @@ void Index::create(GfaGraph& graph){
             std::string sub=unitig.substr(i,k-1);
             std::string toStore=getCanonical(sub);
             bool orientation=isCanonical(sub);
-            if(index_table.find(toStore)==index_table.end()){
+            if(index_table.count(toStore)==0){
                     std::vector<std::tuple<int,int,bool>> data;
                     data.push_back(std::tuple<int,int,bool>(id,i,orientation));
                     index_table[toStore]=data;
@@ -34,15 +33,12 @@ void Index::create(GfaGraph& graph){
                 std::vector<std::tuple<int,int,bool>> data=index_table.at(toStore);
                 data.push_back(std::tuple<int,int,bool>(id,i,orientation));
                 index_table[toStore]=data;
-
             }
-            i=i+1;
         }
-        iter_nodes++;
 	}
 }
 std::vector<std::tuple<int,int,bool>> Index::find(std::string kmer){
-    if(index_table.find(getCanonical(kmer))==index_table.end()){
+    if(index_table.count(getCanonical(kmer))==0){
         return std::vector<std::tuple<int,int,bool>>();
     }
     return index_table.at(getCanonical(kmer));

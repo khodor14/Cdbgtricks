@@ -36,12 +36,12 @@ then
     $cmd1
     $cmd2
     $cmd3
+    #clean directories and txt files
+    rm -r graph_dir
+    rm -r filter
+    rm fof.txt
+    rm query.txt
 else
     echo "kmtricks is not installed"
+    echo "please visit https://github.com/tlemane/kmtricks for a detailed tutorial on how to install it"
 fi
-
-#clean directories and txt files
-rm -r graph_dir
-rm -r filter
-rm fof.txt
-rm query.txt
