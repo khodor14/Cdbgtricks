@@ -16,7 +16,6 @@ int Index::get_k(){
 }
 void Index::create(GfaGraph& graph){
     std::unordered_map<int,std::string> nodes=graph.get_nodes();
-    auto iter_nodes=nodes.begin();
    for (std::pair<int, std::string> node : nodes){
         int id=node.first;
         std::string unitig=node.second;
@@ -34,11 +33,8 @@ void Index::create(GfaGraph& graph){
                 std::vector<std::tuple<int,int,bool>> data=index_table.at(toStore);
                 data.push_back(std::tuple<int,int,bool>(id,i,orientation));
                 index_table[toStore]=data;
-
             }
-            i=i+1;
         }
-        iter_nodes++;
 	}
 }
 std::vector<std::tuple<int,int,bool>> Index::find(std::string kmer){

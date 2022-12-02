@@ -35,11 +35,9 @@ int edge::get_source(){
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
     std::ifstream file{filename, std::ios::in};
 	if(filename.length()>4 && !std::strcmp(filename.substr(filename.length()-3).c_str(),"gfa")){
-		std::cout<<filename<<" gfa\n";
 		return LoadFromStream(file,true);
 	}
     else{
-		std::cout<<filename<<" fasta\n";
 		return LoadFromStream(file,false);
 	}
 }
@@ -50,16 +48,25 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 	*/
 	GfaGraph graph;
 	if(!gfa){
-		int id=1;
-		while (file.good())
-		{
-			std::string line = "";
-			std::getline(file, line);
-			if (line.size() == 0 && !file.good()) break;
-			if (line.size() == 0) continue;
-			if(line[0]=='>') continue;	
-			graph.unitigs[id]=line;
-			id++;
+		int id=0;
+		std::string line, DNA_sequence;
+
+		while(std::getline(file, line)) {
+
+			// line may be empty so you *must* ignore blank lines
+			// or you have a crash waiting to happen with line[0]
+			if(line.empty())
+				continue;
+
+			if (line[0] == '>') {
+				// output previous line before overwriting id
+				// but ONLY if id actually contains something
+				DNA_sequence.clear();
+			}
+			else {//  if (line[0] != '>'){ // not needed because implicit
+				DNA_sequence += line;
+				graph.unitigs[++id]=DNA_sequence;
+			}
 		}
 		return graph;
 	}
