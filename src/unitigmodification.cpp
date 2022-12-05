@@ -105,7 +105,7 @@ std::unordered_map<int,std::string> construct_unitigs_from_kmer(Index &unitig_in
     }
     return unitigs_map;
 }
-void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,int position,int k){
+void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,int position,int k,int *max_node_id){
     /*
     The input are:
                 the unitigs of the graph
@@ -120,7 +120,7 @@ void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,
                         update the id and positions of all (k-1)-mers of right starting at 1
                         insert the new unitig into the unitig sets
     */
-    int new_id=graph_unitigs.size()*2;//new id
+    int new_id=*max_node_id+1;//new id to modify, not a good solution, should modify the merge function before
     std::string original_unitig=graph_unitigs.at(id);//get the unitig to split
     std::string left=original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
     std::string right=original_unitig.substr(position,original_unitig.length()-position);//take the right from position till the end
@@ -129,6 +129,7 @@ void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,
     ind.update_unitig(right,new_id,id,1,right.length()-k-1);//update the id and position of all other (k-1)-mers
     graph_unitigs[new_id]=right;//insert the right portion into the data struction
     std::cout<<"Unitig "<<id<<" is splitted at "<<position<<"\n";
+    *max_node_id=*max_node_id+1;//incrementing the max nod id
     /*
         Note:this implementation needs to be oprimised
     */
@@ -149,7 +150,7 @@ int decision(const std::vector<std::tuple<int,int,bool>> &occ_graph,const std::v
     }
     return decision;
 }
-void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,bool> occurence_unitig,std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,std::unordered_map<int,std::string> &graph_unitigs,std::unordered_map<int,std::string> &constructed_unitigs){
+void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,bool> occurence_unitig,std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,std::unordered_map<int,std::string> &graph_unitigs,std::unordered_map<int,std::string> &constructed_unitigs,int *max_node_id){
     /*
         the inputs of the function:
                         the occurence of k-1 mer in the graph
@@ -192,7 +193,7 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
         decision one means we need to split the unitig
         */
 
-        split(graph_unitigs,index_graph,std::get<0>(occ_g.front()),std::get<1>(occ_g.front()),index_graph.get_k());
+        split(graph_unitigs,index_graph,std::get<0>(occ_g.front()),std::get<1>(occ_g.front()),index_graph.get_k(),max_node_id);
        }
        else if (dec==2){
             /*
@@ -204,6 +205,9 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
            bool orient_g=std::get<2>(occ_g.front());
            std::tuple<std::string,bool> concat_other_extremity=can_we_merge(pos_u,pos_g,orient_u,orient_g,constructed_unitigs.at(std::get<0>(occ_u.front())),graph_unitigs.at(std::get<0>(occ_g.front())),index_graph);//check if we can merge
            if(std::get<0>(concat_other_extremity).length()>0){
+            /*
+            we merged the unitig from the second end-point
+            */
             std::cout<<"Unitig "<<id_graph<<" is merged with a constructed unitig from the second extremity\n";
             if(std::get<1>(concat_other_extremity)){//the unitig of the graph is first
                 /*
@@ -295,7 +299,7 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
    }
     return std::tuple<std::string,bool>(concatination,order);
 }
-void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs){
+void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs,int *max_node_id){
     /*
         this function takes the unitigs of the graph, the constructed unitigs and their index
 
@@ -306,15 +310,15 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
         std::vector<std::tuple<int,int,bool>> graph_occ=graph_index.find(mer_unitig);//all occurrences in the graph
         int dec=decision(graph_occ,elem.second,graph_unitigs,graph_index.get_k());//find the decision of split or merge or nothing
         if(dec==1){//split
-            split(graph_unitigs,graph_index,std::get<0>(graph_occ.front()),std::get<1>(graph_occ.front()),graph_index.get_k());
+            split(graph_unitigs,graph_index,std::get<0>(graph_occ.front()),std::get<1>(graph_occ.front()),graph_index.get_k(),max_node_id);
         }
         else if(dec==2){//merge
-            checkAndMerge(graph_occ.front(),elem.second.front(),unitig_index,graph_index,graph_unitigs,constructed_unitigs);
+            checkAndMerge(graph_occ.front(),elem.second.front(),unitig_index,graph_index,graph_unitigs,constructed_unitigs,max_node_id);
         }    
    }
 
    //add the remaining constructed unitigs to the unitigs of the graph
-   int id=100000;//graph_unitigs.size()+1;//id of the new added unitig
+   int id=*max_node_id+1;//graph_unitigs.size()+1;//id of the new added unitig
    for(std::pair<int,std::string> const_unitig:constructed_unitigs){
     graph_unitigs[id]=const_unitig.second;
     

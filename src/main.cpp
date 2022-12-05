@@ -189,7 +189,8 @@ int main(int argc,char **argv){
     std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
     std::unordered_map<int,std::string> merged=g2.get_nodes();
     std::cout<<constrct_unitigs.size()<<" constructed unitigs\n";
-    merge_unitigs(constrtc_index,ind,merged,constrct_unitigs);    
+    int max_node_id=g2.get_max_node_id();
+    merge_unitigs(constrtc_index,ind,merged,constrct_unitigs,&max_node_id);    
     if(std::get<0>(arguments.at("test"))){
         GfaGraph g3;
         GfaGraph to_compare=g3.LoadFromFile(std::get<1>(arguments.at("augmentedgraph")));
