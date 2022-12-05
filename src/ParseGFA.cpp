@@ -32,6 +32,9 @@ int edge::get_sink(){
 int edge::get_source(){
 	return source;
 }
+void GfaGraph::set_max_node_id(int id){
+	max_node_id=id;
+}
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
     std::ifstream file{filename, std::ios::in};
 	if(filename.length()>4 && !std::strcmp(filename.substr(filename.length()-3).c_str(),"gfa")){
@@ -66,6 +69,9 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			else {//  if (line[0] != '>'){ // not needed because implicit
 				DNA_sequence += line;
 				graph.unitigs[++id]=DNA_sequence;
+				if(id>graph.get_max_node_id()){
+					graph.set_max_node_id(id);
+				}
 			}
 		}
 		return graph;
@@ -90,6 +96,9 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			sstr >> seq;
 			assert(seq.size() >= 1);
             int id=stoi(idstr);
+			if(id>graph.get_max_node_id()){
+				graph.set_max_node_id(id);
+			}
 			graph.unitigs[id]=seq;
 		}
 		if (line[0] == 'L')
@@ -140,6 +149,9 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 		out<<">sequence"+std::to_string(i)<<std::endl;
 		out<<unitigs[i]<<std::endl;
 	}
+}
+int GfaGraph::get_max_node_id(){
+	return max_node_id;
 }
 std::vector<int> GfaGraph::find_in_neighbors(int node_id){
 	std::vector<int> in_neighbors;
