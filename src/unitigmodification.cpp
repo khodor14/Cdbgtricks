@@ -309,7 +309,6 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
         std::string mer_unitig=elem.first;
         std::vector<std::tuple<int,int,bool>> graph_occ=graph_index.find(mer_unitig);//all occurrences in the graph
         int dec=decision(graph_occ,elem.second,graph_unitigs,graph_index.get_k());//find the decision of split or merge or nothing
-        std::cout<<"MAX NODE ID SO FAR IS: "<<*max_node_id<<std::endl;
         if(dec==1){//split
             split(graph_unitigs,graph_index,std::get<0>(graph_occ.front()),std::get<1>(graph_occ.front()),graph_index.get_k(),max_node_id);
         }
@@ -319,7 +318,7 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
    }
 
    //add the remaining constructed unitigs to the unitigs of the graph
-   int id=100000;//graph_unitigs.size()+1;//id of the new added unitig
+   int id=*max_node_id+1;//graph_unitigs.size()+1;//id of the new added unitig
    for(std::pair<int,std::string> const_unitig:constructed_unitigs){
     graph_unitigs[id]=const_unitig.second;
     
