@@ -45,7 +45,7 @@ public:
     GfaGraph() = default;
     static GfaGraph LoadFromFile(std::string filename);
     static GfaGraph LoadFromStream(std::ifstream & file,bool gfa);
-    void convertToFasta();
+    void convertToFasta(std::string filename);
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
     std::unordered_map<int,std::string> get_nodes();

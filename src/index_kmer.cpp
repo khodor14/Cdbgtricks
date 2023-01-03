@@ -87,7 +87,6 @@ void Index::insertSubUnitig(std::string unitig,int id,int starting_position,int 
                      the ending position (int)
         Actions performed: all the (k-1)-mers occuring between starting_position and ending position gets inserted
     */
-
    for(int position=starting_position;position<=ending_position;position++){
         //call the function insert to insert the (k-1)-mer at position i
         insert(unitig.substr(position,k-1),id,position);

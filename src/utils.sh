@@ -4,7 +4,7 @@
 kmer=$1
 graph_link=$2
 genome_link=$3
-
+output_file=$4
 #kmtricks run for values of k in the range [8,255]
 if [ $kmer -lt 8 ] || [ $kmer -gt 255];
 then
@@ -27,7 +27,7 @@ cmd1="kmtricks pipeline --file fof.txt --run-dir graph_dir  --kmer-size ${kmer} 
 #process the aggregate on the genome
 cmd2="kmtricks filter --in-matrix graph_dir --key query.txt --output filter --hard-min 1 --out-types k --cpr-in --cpr-out -t 32"
 # find the difference
-cmd3="kmtricks aggregate --run-dir filter --count A1:kmer --format text --cpr-in --output kmers.txt"
+cmd3="kmtricks aggregate --run-dir filter --count A1:kmer --format text --cpr-in --output ${output_file}"
 
 #check if kmtricks is installed
 if command -v kmtricks &> /dev/null

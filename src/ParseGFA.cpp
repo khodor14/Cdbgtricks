@@ -142,12 +142,11 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 
 	return graph;
 }
- void GfaGraph::convertToFasta(){
-    std::string filenameout("out_1.fa");
-	std::ofstream out(filenameout);
-	for(uint i(0);i<unitigs.size();++i){
-		out<<">sequence"+std::to_string(i)<<std::endl;
-		out<<unitigs[i]<<std::endl;
+ void GfaGraph::convertToFasta(std::string filename){
+	std::ofstream out(filename);
+	for(std::pair<int,std::string> unitig:unitigs){
+		out<<">sequence"+std::to_string(unitig.first)<<std::endl;
+		out<<unitig.second<<std::endl;
 	}
 }
 int GfaGraph::get_max_node_id(){
