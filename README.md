@@ -1,9 +1,8 @@
 # ccdbgUpdater
 ccdbgUpdater is a modular tool for updating a colored and compacted de Bruijn Graph. 
-
+This tool is on progress. 
 ### Augmenting a compacted de Bruijn Graph by a new genome or a set of sequences
-
-
+We support at the moment a fasta output format. 
 ## Requirements
 
 ccdbgUpdater is developed in C++11
@@ -57,6 +56,7 @@ Options:
 			 it must be given if the argument --test is set to true
 	--output_file_name[-o] the name of the output file
 	-v verbosity
+  -u index the constructed funitigs
 	--output_kmers output kmers to temporary file
 
 ```
@@ -73,9 +73,9 @@ Options:
 
   2. **Update a compacted de Bruijn graph from a reference genome file**
      ```
-     ./main --input_graph graph.gfa --k_mer_file kmers.txt -k 31 -o output_prefix
+     ./main --input_graph graph.gfa --input_genome B.fa -k 31 -o output_prefix
      ```
-     The compacted de Bruijn graph is built (`build`) with 4 threads (`-t 4`) from the 31-mers (`-k 31`) of file *C.fasta* (`-r C.fasta`). By using parameter `-r`, file *C.fasta* is NOT filtered: all 31-mers occurring in *C* are used during the construction. The graph is written to file *C_graph.gfa* (`-o C_graph`).
+     The compacted de Bruijn graph is updated with the absent 31-mers (`-k 31`) of file *B.fa* (`--input_genome B.fa`). Here [kmtricks](https://github.com/tlemane/kmtricks) is used to find the absent k-mers. The graph is written to file *output_prefix.gfa* (`-o output_prefix`).
 
 
 
@@ -90,10 +90,10 @@ Options:
      ```
      kmtricks filter --in-matrix graph_dir --key query.txt --output filter --hard-min 1 --out-types k --cpr-in --cpr-out -t 32
      ```
-    ```
+     ```
      kmtricks aggregate --run-dir filter --count A1:kmer --format text --cpr-in --output kmers.txt
-    ```
-    For more details on the documentation of kmtricks visit https://github.com/tlemane/kmtricks/wiki
+     ```
+    For more details on the documentation of kmtricks visit [kmtricks wiki](https://github.com/tlemane/kmtricks/wiki)
 
   2. **Indexing the input Graph**
      We store (k-1)-mers of the unitig of the graph as (k-1)-mer->Vector[(unitig id,position,orientation)]
