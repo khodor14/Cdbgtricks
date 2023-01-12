@@ -93,7 +93,7 @@ Options:
      ```
      kmtricks aggregate --run-dir filter --count A1:kmer --format text --cpr-in --output kmers.txt
      ```
-    For more details on the documentation of kmtricks visit [kmtricks wiki](https://github.com/tlemane/kmtricks/wiki)
+    For more details on the documentation of kmtricks visit [wiki](https://github.com/tlemane/kmtricks/wiki)
 
   2. **Indexing the input Graph**
      We store (k-1)-mers of the unitig of the graph as (k-1)-mer->Vector[(unitig id,position,orientation)]
