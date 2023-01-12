@@ -315,7 +315,7 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
    }
     return std::tuple<std::string,bool>(concatination,order);
 }
-void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose){
+void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose,bool update_index){
     /*
         this function takes the unitigs of the graph, the constructed unitigs and their index
 
@@ -337,7 +337,9 @@ void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int
    int id=*max_node_id+1;
    for(std::pair<int,std::string> const_unitig:constructed_unitigs){
     graph_unitigs[id]=const_unitig.second;
-    
+    if(update_index){
+        graph_index.insertSubUnitig(const_unitig.second,id,0,const_unitig.second.length()-graph_index.get_k()+1);
+    }
     id++;
    }
 

@@ -23,7 +23,7 @@ echo "G : $graph_link">"fof.txt"
 echo "A1 : ${genome_link}" > "query.txt"
 
 #process the pipeline on the graph
-cmd1="kmtricks pipeline --file fof.txt --run-dir graph_dir  --kmer-size ${kmer} --hard-min 1 --mode kmer:pa:bin --nb-partitions 100 --cpr --threads 32"
+cmd1="kmtricks pipeline --file fof.txt --run-dir graph_dir --kmer-size ${kmer} --hard-min 1 --mode kmer:pa:bin --nb-partitions 100 --cpr --threads 32"
 #process the aggregate on the genome
 cmd2="kmtricks filter --in-matrix graph_dir --key query.txt --output filter --hard-min 1 --out-types k --cpr-in --cpr-out -t 32"
 # find the difference
