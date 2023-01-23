@@ -8,7 +8,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
-
+#include <sstream>
 void show_usage(){
     std::cerr<<"Usage:"<<"\n"
             <<"./main --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
@@ -33,6 +33,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments;
     arguments["graphfile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile"]=std::tuple<bool,std::string>(false,"");
+    arguments["genomefile2"]=std::tuple<bool,std::string>(false,"");//remove me
     arguments["kvalue"]=std::tuple<bool,std::string>(false,"");
     arguments["kmerfile"]=std::tuple<bool,std::string>(false,"");
     arguments["augmentedgraph"]=std::tuple<bool,std::string>(false,"");
@@ -178,6 +179,7 @@ void validate_merging(const std::vector<std::string>& merged,const std::vector<s
     the first one is the output of the algorithm we developed
     the second one is a graph that already constains the k-mers we added to the input graph of our algo
     */ 
+    std::cout<<merged.size()<<"="<<original_graph.size()<<std::endl;
     if(merged.size()!=original_graph.size()){
         std::cout<<"The augmented graph with my algo is not the same as the original graph (different number of unitigs)\n";
         std::cout<<merged.size()<<" "<<original_graph.size()<<"\n";
@@ -208,7 +210,6 @@ float average_unitig_length(std::unordered_map<int,std::string> unitigs){
     return average/unitigs.size();
 }
 int main(int argc,char **argv){
-    
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     std::unordered_map<std::string,bool> k_mer;
     GfaGraph g;
@@ -256,6 +257,7 @@ int main(int argc,char **argv){
     end=std::chrono::steady_clock::now();
     float time_index_constructed_unitigs=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     std::unordered_map<int,std::string> merged=g2.get_nodes();
+    std::cout<<"kmers in unitigs="<<total_kmers_in_unitigs(merged,31)<<" kmers absent"<<k_mer.size()<<std::endl;
     std::cout<<"Originally we have: "<<merged.size()<<" unitigs\n";
     std::cout<<constrct_unitigs.size()<<" constructed unitigs\n";
     int max_node_id=g2.get_max_node_id();
@@ -263,15 +265,10 @@ int main(int argc,char **argv){
     int num_join=0;
     float time_split=0;
     float time_join=0;
-    merge_unitigs(constrtc_index,ind,merged,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,verbose,std::get<0>(arguments.at("updateindex")));
-    //std::cout<<"# of split is "<<num_split<<std::endl;
-    //std::cout<<"# of join is "<<num_join<<std::endl;   
-    //std::cout<<"kmtricks found "<<num_kmer_absent;
-    //int final_num_kmers=total_kmers_in_unitigs(merged,ind.get_k());
-    //std::cout<<"#input kmers: "<<num_kmers_in_input<<std::endl;
-    //std::cout<<"#absent kmers: "<<num_kmer_absent<<std::endl;
-    //std::cout<<"#total kmers after update: "<<final_num_kmers<<std::endl;
-    //std::cout<<"#kmers in input +#absent kmers=# kmers afeter update "<<final_num_kmers<<"=="<<num_kmers_in_input+num_kmer_absent<<std::endl;
+    float time_update=0;
+    merge_unitigs(constrtc_index,ind,merged,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true);
+    std::cout<<"After merging "<<total_kmers_in_unitigs(merged,31)<<std::endl;
+    
     float average=average_unitig_length(g2.get_nodes());
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join\t number absent kmers \t average unitig length"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<"\t"<<num_kmer_absent<<"\t"<<average<<std::endl;

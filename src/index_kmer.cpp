@@ -53,11 +53,10 @@ void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int po
     std::vector<std::tuple<int,int,bool>> data=find(k_1_mer);//get the occurences of the string from the index
 
     //go over the occurences
-    for (std::tuple<int, int,bool>& tup : data){
+    for (int i=0;i<data.size();i++){
         //which occurens has the previous id, the old occurence
-        if(std::get<0>(tup)==prev_id){
-            std::get<0>(tup)=current_id;//update id
-            std::get<1>(tup)=position;//update positions
+        if(std::get<0>(data[i])==prev_id){
+            data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
             break;//break since the (k-1)-mer occurs once in a unitig except for palindromic k-mers
         }
     }
