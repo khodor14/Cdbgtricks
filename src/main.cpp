@@ -147,7 +147,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
             }
         }
         else{
-            std::cerr<<"Unsupported argument "<<"\n";
+            std::cerr<<"Unsupported argument "<<argv[i]<<"\n";
             show_usage();
             exit(0);
         }
@@ -179,7 +179,6 @@ void validate_merging(const std::vector<std::string>& merged,const std::vector<s
     the first one is the output of the algorithm we developed
     the second one is a graph that already constains the k-mers we added to the input graph of our algo
     */ 
-    std::cout<<merged.size()<<"="<<original_graph.size()<<std::endl;
     if(merged.size()!=original_graph.size()){
         std::cout<<"The augmented graph with my algo is not the same as the original graph (different number of unitigs)\n";
         std::cout<<merged.size()<<" "<<original_graph.size()<<"\n";
@@ -210,37 +209,43 @@ float average_unitig_length(std::unordered_map<int,std::string> unitigs){
     return average/unitigs.size();
 }
 int main(int argc,char **argv){
+    //parse arguments
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     std::unordered_map<std::string,bool> k_mer;
+    //load the input graph
     GfaGraph g;
     GfaGraph g2=g.LoadFromFile(std::get<1>(arguments.at("graphfile")));
     bool verbose=std::get<0>(arguments.at("verbosity"));
     float time_kmtricks=0;
-    
+    //if we don't have a kmerfile, then a genome is passed
     if(!std::get<0>(arguments.at("kmerfile"))){
         std::string input_to_kmtricks=std::get<1>(arguments.at("graphfile"));
         if(std::get<1>(arguments.at("graphfile")).length()>4 && !std::strcmp(std::get<1>(arguments.at("graphfile")).substr(std::get<1>(arguments.at("graphfile")).length()-3).c_str(),"gfa")){
-           
+            //if the graph is not in fasta format, convert it to fasta as kmtricks accepts only fasta format (gzipped or not)
             g2.convertToFasta(std::get<1>(arguments.at("outputkmers"))+".fa");
             input_to_kmtricks=std::get<1>(arguments.at("outputkmers"))+".fa";
         }
+        //call kmtricks
         std::system("chmod +x utils.sh");
         auto start=std::chrono::steady_clock::now();
         std::system(("bash utils.sh "+std::get<1>(arguments.at("kvalue"))+" "+input_to_kmtricks+" "+std::get<1>(arguments.at("genomefile"))+" "+std::get<1>(arguments.at("outputkmers"))+".txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
+        //load the kmers
         k_mer=createHashTable(std::get<1>(arguments.at("outputkmers"))+".txt");
     }
     else{
+        //load the kmers
         k_mer=createHashTable(std::get<1>(arguments.at("kmerfile")));
     }
-    Index ind=Index(1000,31);//stoi(std::get<1>(arguments.at("kvalue"))));
-    //int num_kmers_in_input=total_kmers_in_unitigs(g2.get_nodes(),ind.get_k());
+    //create the index of the graph
+    Index ind=Index(1000,stoi(std::get<1>(arguments.at("kvalue"))));//
     auto start=std::chrono::steady_clock::now();
     ind.create(g2);
     auto end =std::chrono::steady_clock::now();
     float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     start=std::chrono::steady_clock::now();
+    //construct the funitigs from the absent kmers
     std::unordered_map<int,std::string> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
     end=std::chrono::steady_clock::now();
     float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
@@ -253,6 +258,7 @@ int main(int argc,char **argv){
     std::cout<<"constructed "<<num_construct<<" from "<<num_kmer_absent<<" k-mers "<<std::endl;
     std::cout<<"# of unitigs in input is "<<original_unitigs<<std::endl;
     start=std::chrono::steady_clock::now();
+    //index the funitigs (we store suffix->(id,position,orientation) and prefix->(id,position,orientation))
     std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
     end=std::chrono::steady_clock::now();
     float time_index_constructed_unitigs=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
@@ -260,30 +266,30 @@ int main(int argc,char **argv){
     std::cout<<"kmers in unitigs="<<total_kmers_in_unitigs(merged,31)<<" kmers absent"<<k_mer.size()<<std::endl;
     std::cout<<"Originally we have: "<<merged.size()<<" unitigs\n";
     std::cout<<constrct_unitigs.size()<<" constructed unitigs\n";
+    //statistics needed in testing
     int max_node_id=g2.get_max_node_id();
     int num_split=0;
     int num_join=0;
     float time_split=0;
     float time_join=0;
     float time_update=0;
+    //merge the unitigs of the graph with the funitigs
     merge_unitigs(constrtc_index,ind,merged,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true);
     std::cout<<"After merging "<<total_kmers_in_unitigs(merged,31)<<std::endl;
-    
     float average=average_unitig_length(g2.get_nodes());
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join\t number absent kmers \t average unitig length"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<"\t"<<num_kmer_absent<<"\t"<<average<<std::endl;
+    //if we are testing with an already augmented graph
     if(std::get<0>(arguments.at("test"))){
         GfaGraph g3;
         GfaGraph to_compare=g3.LoadFromFile(std::get<1>(arguments.at("augmentedgraph")));
         validate_merging(canonicalUnitigs(merged),canonicalUnitigs(to_compare.get_nodes()));
-        //find_differences(canonicalUnitigs(merged),canonicalUnitigs(to_compare.get_nodes()),ind.get_k());
-        //int num_kmers_bifrost=total_kmers_in_unitigs(to_compare.get_nodes(),ind.get_k());
-        //std::cout<<"#kmer differences: "<<num_kmers_bifrost-final_num_kmers<<std::endl;
     }
-
+    //if the output file name prefix is passed as argument
     if(std::get<0>(arguments.at("outputfilename"))){
         write_unitigs_to_fasta(merged,std::get<1>(arguments.at("outputfilename"))+".fa");
     }
+    //default autput file name
     else{
         write_unitigs_to_fasta(merged,"augmented_by_our_algo.fa");
     }
