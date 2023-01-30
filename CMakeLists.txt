@@ -7,18 +7,20 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 #adding the executable
-add_executable(${PROJECT_NAME} main.cpp	ParseGFA.cpp unitigmodification.cpp  CommonUtils.cpp index_kmer.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/index_kmer.cpp)
 
 #adding the directory
-add_subdirectory(src)
+#add_subdirectory(src)
 add_subdirectory(external/sparsehash)
-
+target_include_directories(${PROJECT_NAME}
+    #PUBLIC src
+    PUBLIC external/sparsehash
+)
 #linking to directories
 target_link_directories(${PROJECT_NAME}
-    PRIVATE src
-    PRIVATE external/sparsehash/src
+    #PRIVATE src
+    PRIVATE external/sparsehash
 )
 
 #linking to libraries
-target_link_libraries(${PROJECT_NAME} src sparsehash)
-
+#target_link_libraries(${PROJECT_NAME} sparsehash)
