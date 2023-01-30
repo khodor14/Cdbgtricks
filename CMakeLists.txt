@@ -21,3 +21,4 @@ target_link_directories(${PROJECT_NAME}
 
 #linking to libraries
 target_link_libraries(${PROJECT_NAME} src sparsehash)
+
