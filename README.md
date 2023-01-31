@@ -22,7 +22,7 @@ Installing ccdbupdater: Currently we have only the source version
 
   ```
   git clone https://github.com/khodor14/ccdbgUpdater.git
-  cd ccdbupdater && mkdir build && cd build
+  cd ccdbgUpdater && mkdir build && cd build
   cmake -S ../ -B .
   make
   ```
