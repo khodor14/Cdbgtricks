@@ -22,22 +22,23 @@ Installing ccdbupdater: Currently we have only the source version
 
   ```
   git clone https://github.com/khodor14/ccdbgUpdater.git
-  cd ccdbgUpdater/src
+  cd ccdbupdater && mkdir build && cd build
+  cmake -S ../ -B .
   make
   ```
 
 ## Binary usage:
 
 ```
-./main
+./ccdbgupdater
 ```
 
 displays the command line interface:
 ```
 Usage:
-./main --input_graph <value> --input_genome <value> --k_mer_size <value>
+./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>
 OR
-./main --input_graph <value> --k_mer_file <value> --k_mer_size <value>
+./ccdbgupdater --input_graph <value> --k_mer_file <value> --k_mer_size <value>
 
 
 
@@ -64,13 +65,13 @@ Options:
 ### Examples
   1. **Update a compacted de bruijn graph from a kmer file**
      ```
-     ./main --input_graph graph.gfa --k_mer_file kmers.txt -k 31 -o output_prefix
+     ./ccdbupdater --input_graph graph.gfa --k_mer_file kmers.txt -k 31 -o output_prefix
      ```
      The compacted de Bruijn graph *graph.gfa* is updated  from the 31-mers (`-k 31`) of files *kmers.txt*. The updated graph is stored in *output_prefix.fa*
 
   2. **Update a compacted de Bruijn graph from a reference genome file**
      ```
-     ./main --input_graph graph.gfa --input_genome B.fa -k 31 -o output_prefix
+     ./ccdbgupdater --input_graph graph.gfa --input_genome B.fa -k 31 -o output_prefix
      ```
      The compacted de Bruijn graph is updated with the absent 31-mers (`-k 31`) of file *B.fa* (`--input_genome B.fa`). Here [kmtricks](https://github.com/tlemane/kmtricks) is used to find the absent k-mers. The graph is written to file *output_prefix.gfa* (`-o output_prefix`).
 

@@ -11,9 +11,9 @@
 #include <sstream>
 void show_usage(){
     std::cerr<<"Usage:"<<"\n"
-            <<"./main --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
+            <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
             <<"OR\n"
-            <<"./main --input_graph <value> --k_mer_file <value> --k_mer_size <value>\n"
+            <<"./ccdbgupdater --input_graph <value> --k_mer_file <value> --k_mer_size <value>\n"
             <<"\n\n\n"
             <<"Options:"<<"\n"
             <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
