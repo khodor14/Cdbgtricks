@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <tuple>
-
+#include <sparsehash/sparse_hash_map>
 Index::Index(int buckets,int k_size){
     k=k_size;
     number_of_buckets=buckets;
@@ -15,7 +15,7 @@ int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
-    std::unordered_map<int,std::string> nodes=graph.get_nodes();
+    google::sparse_hash_map<int,std::string> nodes=graph.get_nodes();
    for (std::pair<int, std::string> node : nodes){
         int id=node.first;
         std::string unitig=node.second;
