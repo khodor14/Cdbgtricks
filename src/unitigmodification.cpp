@@ -89,7 +89,7 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
 std::string unitig_from_kmers(std::string kmer,Index& unitig_index, std::unordered_map<std::string,bool>& kmers){
     std::string right=extend_right(kmer,unitig_index,kmers);//extend the right of the kmer
     std::string left=reverseComplement(extend_right(reverseComplement(kmer),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
-    return left+right.substr(kmer.length(),right.length());//return the concatination of left and right. Omit the first k characters of right because they are the suffix of left
+    return left+right.substr(kmer.length(),right.length());//return the concatenation of left and right. Omit the first k characters of right because they are the suffix of left
 }
 std::unordered_map<int,std::string> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<std::string,bool> &kmers){
     std::unordered_map<int,std::string> unitigs_map;//storing them in a map for fast access
@@ -180,9 +180,9 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
    int id_constructed=std::get<0>(occurence_unitig);
    std::string graph_u=graph_unitigs.at(id_graph);
    std::string constructed_unitig=constructed_unitigs.at(id_constructed);
-   std::tuple<std::string,bool> concat=can_we_merge(position_unitig,position_graph,orientation_unitig,orientation_graph,constructed_unitig,graph_u,index_graph);//concatinate the unitigs if possible
+   std::tuple<std::string,bool> concat=can_we_merge(position_unitig,position_graph,orientation_unitig,orientation_graph,constructed_unitig,graph_u,index_graph);//concatenate the unitigs if possible
    std::string merged=std::get<0>(concat);
-   if(merged.length()>0){//the strings get concatinated
+   if(merged.length()>0){//the strings get concatenated
         *num_join=*num_join+1;
         if(verbose){
             std::cout<<"Unitig "<<id_graph<<" is merged with a constructed unitig\n";
@@ -195,7 +195,7 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
                                                ----------------------------- constructed unitig
                                                                         --------------------------------- unitig graph 2
         */
-       int position2_u=abs(position_unitig-constructed_unitig.length()+index_graph.get_k()-1);//if its prefix then position1=0 and position2=|u|-k+1, if pos1=|u|-k+1 then pos2=0 so pos2=|pos1-|u|+k-1|
+       int position2_u=abs(int(position_unitig-constructed_unitig.length()+index_graph.get_k()-1));//if its prefix then position1=0 and position2=|u|-k+1, if pos1=|u|-k+1 then pos2=0 so pos2=|pos1-|u|+k-1|
        std::vector<std::tuple<int,int,bool>> occ_g=index_graph.find(constructed_unitig.substr(position2_u,index_graph.get_k()-1));
        std::vector<std::tuple<int,int,bool>> occ_u;
        if(unitig_index.count(getCanonical(constructed_unitig.substr(position2_u,index_graph.get_k()-1)))>0){
@@ -297,19 +297,19 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
                 the size of the k-mer
     
     return:
-            the concatination if possible, otherwise empty string
-            the order of the concatination: true if the unitig of the graph is first, false otherwise
+            the concatenation if possible, otherwise empty string
+            the order of the concatenation: true if the unitig of the graph is first, false otherwise
     */
-    std::string concatination="";
+    std::string concatenation="";
     bool order=true;//the first part is the unitig from the graph
     if(orient_g==orient_u){
         if(position_g==0 && position_u!=0){//result=unitig constructed+unitig of the graph
-            //concatinate the unitig constructed to the one of the graph
-            concatination=unitig_constrct+unitig_graph.substr(index_table.get_k()-1);
+            //concatenate the unitig constructed to the one of the graph
+            concatenation=unitig_constrct+unitig_graph.substr(index_table.get_k()-1);
             order=false;
         }
         else if(position_g!=0 && position_u==0){//result=unitig of the graph+constructed unitig 
-            concatination=unitig_graph+unitig_constrct.substr(index_table.get_k()-1);
+            concatenation=unitig_graph+unitig_constrct.substr(index_table.get_k()-1);
         }
         /*
         otherwise don't merge the unitigs
@@ -325,16 +325,16 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
         */
        if(position_g==0 && position_u==0){
         //reverse the constructed unitig then add to it the unitig of the graph
-        concatination=reverseComplement(unitig_graph)+unitig_constrct.substr(index_table.get_k()-1);
+        concatenation=reverseComplement(unitig_graph)+unitig_constrct.substr(index_table.get_k()-1);
        }
        else if(position_g!=0 && position_u!=0)
        {
-            concatination=unitig_constrct+reverseComplement(unitig_graph).substr(index_table.get_k()-1);
+            concatenation=unitig_constrct+reverseComplement(unitig_graph).substr(index_table.get_k()-1);
             order=false;
            //add to the unitig of the graph the reverse of the constructed unitig
        }
    }
-    return std::tuple<std::string,bool>(concatination,order);
+    return std::tuple<std::string,bool>(concatenation,order);
 }
 void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,float * time_update,bool verbose,bool update_index){
     /*
