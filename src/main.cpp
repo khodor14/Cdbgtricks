@@ -26,7 +26,6 @@ void show_usage(){
             <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
             <<"\t"<<"--update_index[-u]"<<" index the constructed funitigs\n" 
             <<"\t"<<"-v"<<" verbosity\n" 
-            <<"\t"<<"--output_kmers"<<" output kmers to temporary file\n"
             ;
 }
 std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
@@ -40,7 +39,6 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     arguments["test"]=std::tuple<bool,std::string>(false,"");
     arguments["outputfilename"]=std::tuple<bool,std::string>(false,"");
     arguments["verbosity"]=std::tuple<bool,std::string>(false,"");
-    arguments["outputkmers"]=std::tuple<bool,std::string>(false,"");
     arguments["updateindex"]=std::tuple<bool,std::string>(false,"");
     if(argc<2){
         show_usage();
@@ -57,18 +55,6 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
         else if(!strcmp(argv[i],"--test"))
         {
             arguments["test"]=std::tuple<bool,std::string>(true,"");
-        }
-        else if(!strcmp(argv[i],"--output_kmers"))
-        {
-            if(i+1<argc){
-                arguments["outputkmers"]=std::tuple<bool,std::string>(true,argv[i+1]);
-                i=i+1;
-            }
-            else{
-                std::cerr<<"the output kmers file name is missing, use --help or -h for details on how to use the program\n";
-                show_usage();
-                exit(0);
-            }
         }
         else if(!strcmp(argv[i],"-v"))
         {
@@ -152,7 +138,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
             exit(0);
         }
     }
-    if(!(std::get<0>(arguments.at("kvalue"))&&std::get<0>(arguments.at("graphfile"))&&std::get<0>(arguments.at("outputkmers")))||!(std::get<0>(arguments.at("kmerfile"))||std::get<0>(arguments.at("genomefile")))){
+    if(!(std::get<0>(arguments.at("kvalue"))&&std::get<0>(arguments.at("graphfile")))||!(std::get<0>(arguments.at("kmerfile"))||std::get<0>(arguments.at("genomefile")))){
         std::cerr<<"Some required arguments are missing\n";
         show_usage();
         exit(0);
@@ -222,17 +208,17 @@ int main(int argc,char **argv){
         std::string input_to_kmtricks=std::get<1>(arguments.at("graphfile"));
         if(std::get<1>(arguments.at("graphfile")).length()>4 && !std::strcmp(std::get<1>(arguments.at("graphfile")).substr(std::get<1>(arguments.at("graphfile")).length()-3).c_str(),"gfa")){
             //if the graph is not in fasta format, convert it to fasta as kmtricks accepts only fasta format (gzipped or not)
-            g2.convertToFasta(std::get<1>(arguments.at("outputkmers"))+".fa");
-            input_to_kmtricks=std::get<1>(arguments.at("outputkmers"))+".fa";
+            g2.convertToFasta("unitigs_fasta.fa");
+            input_to_kmtricks="unitigs_fasta.fa";
         }
         //call kmtricks
         std::system("chmod +x utils.sh");
         auto start=std::chrono::steady_clock::now();
-        std::system(("bash utils.sh "+std::get<1>(arguments.at("kvalue"))+" "+input_to_kmtricks+" "+std::get<1>(arguments.at("genomefile"))+" "+std::get<1>(arguments.at("outputkmers"))+".txt").c_str());
+        std::system(("bash utils.sh "+std::get<1>(arguments.at("kvalue"))+" "+input_to_kmtricks+" "+std::get<1>(arguments.at("genomefile"))+" absent_kmers.txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
-        k_mer=createHashTable(std::get<1>(arguments.at("outputkmers"))+".txt");
+        k_mer=createHashTable("absent_kmers.txt");
     }
     else{
         //load the kmers

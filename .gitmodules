@@ -1,3 +1,0 @@
-[submodule "external/sparsehash"]
-	path = external/sparsehash
-	url = https://github.com/sparsehash/sparsehash-c11.git

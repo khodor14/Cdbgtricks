@@ -58,8 +58,6 @@ Options:
 	--output_file_name[-o] the name of the output file
 	-v verbosity
   -u index the constructed funitigs
-	--output_kmers output kmers to temporary file
-
 ```
 
 ### Examples
