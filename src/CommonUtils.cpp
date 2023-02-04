@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <sstream>
 #include "CommonUtils.h"
+#include <sparsehash/sparse_hash_map>
 size_t baseToInt(char base){
     switch (base)
     {
@@ -58,7 +59,7 @@ void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
         hashes.push_back(hash(next_kmer));
     }
 }
-std::unordered_map<std::string,bool> createHashTable(std::string file_name){
+google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name){
     /*
     input is a file name of kmers, the output of kmtricks pipeline
     output is a hash table kmers->boolean
@@ -67,7 +68,7 @@ std::unordered_map<std::string,bool> createHashTable(std::string file_name){
     */
     std::ifstream file{file_name, std::ios::in};
     std::string line;
-    std::unordered_map<std::string,bool> result;// we store here out kmers
+    google::sparse_hash_map<std::string,bool> result;// we store here out kmers
     while(getline(file,line)){
         //getline(kmers,line);
         std::stringstream sstr {line};
@@ -80,7 +81,7 @@ std::unordered_map<std::string,bool> createHashTable(std::string file_name){
     }
     return result;
 }
-void write_unitigs_to_fasta(std::unordered_map<int,std::string> unitigs,std::string filename){
+void write_unitigs_to_fasta(google::sparse_hash_map<int,std::string> unitigs,std::string filename){
     /*
     This function takes the vector of unitigs as input
     It writes this unitigs to a fasta file

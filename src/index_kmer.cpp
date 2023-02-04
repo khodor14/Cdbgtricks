@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <tuple>
-
+#include <sparsehash/sparse_hash_map>
 Index::Index(int buckets,int k_size){
     k=k_size;
     number_of_buckets=buckets;
@@ -15,7 +15,7 @@ int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
-    std::unordered_map<int,std::string> nodes=graph.get_nodes();
+    google::sparse_hash_map<int,std::string> nodes=graph.get_nodes();
    for (std::pair<int, std::string> node : nodes){
         int id=node.first;
         std::string unitig=node.second;
@@ -30,7 +30,7 @@ void Index::create(GfaGraph& graph){
                     index_table[toStore]=data;
             }
             else{
-                std::vector<std::tuple<int,int,bool>> data=index_table.at(toStore);
+                std::vector<std::tuple<int,int,bool>> data=index_table[toStore];
                 data.push_back(std::tuple<int,int,bool>(id,i,orientation));
                 index_table[toStore]=data;
             }
@@ -41,7 +41,7 @@ std::vector<std::tuple<int,int,bool>> Index::find(std::string kmer){
     if(index_table.count(getCanonical(kmer))==0){
         return std::vector<std::tuple<int,int,bool>>();
     }
-    return index_table.at(getCanonical(kmer));
+    return index_table[getCanonical(kmer)];
 }
 void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int position){
     /*

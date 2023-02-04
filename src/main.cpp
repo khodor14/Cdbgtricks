@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <sstream>
+#include <sparsehash/sparse_hash_map>
 void show_usage(){
     std::cerr<<"Usage:"<<"\n"
             <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
@@ -28,8 +29,8 @@ void show_usage(){
             <<"\t"<<"-v"<<" verbosity\n" 
             ;
 }
-std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
-    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments;
+google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
+    google::sparse_hash_map<std::string,std::tuple<bool,std::string>> arguments;
     arguments["graphfile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile2"]=std::tuple<bool,std::string>(false,"");//remove me
@@ -138,19 +139,23 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
             exit(0);
         }
     }
+<<<<<<< HEAD
+    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"])&&std::get<0>(arguments["outputkmers"]))||!(std::get<0>(arguments["kmerfile"])||std::get<0>(arguments["genomefile"]))){
+=======
     if(!(std::get<0>(arguments.at("kvalue"))&&std::get<0>(arguments.at("graphfile")))||!(std::get<0>(arguments.at("kmerfile"))||std::get<0>(arguments.at("genomefile")))){
+>>>>>>> main
         std::cerr<<"Some required arguments are missing\n";
         show_usage();
         exit(0);
     }
-    if(std::get<0>(arguments.at("test"))&&!std::get<0>(arguments.at("augmentedgraph"))){
+    if(std::get<0>(arguments["test"])&&!std::get<0>(arguments["augmentedgraph"])){
         std::cerr<<"When using testing mode, another graph is required\n";
         show_usage();
         exit(0);
     }
     return arguments;
 }
-std::vector<std::string> canonicalUnitigs(std::unordered_map<int,std::string> unitigs){
+std::vector<std::string> canonicalUnitigs(google::sparse_hash_map<int,std::string> unitigs){
     std::vector<std::string> unitigs_vec;
     for(std::pair<int,std::string> elem:unitigs){
         unitigs_vec.push_back(getCanonical(elem.second));
@@ -179,14 +184,14 @@ void validate_merging(const std::vector<std::string>& merged,const std::vector<s
     std::cout<<"The augmented graph with my algo is the same as the original graph\n";
 
 }
-int total_kmers_in_unitigs(std::unordered_map<int,std::string> unitigs,int k){
+int total_kmers_in_unitigs(google::sparse_hash_map<int,std::string> unitigs,int k){
     int num_kmers_in_input=0;
     for(std::pair<int,std::string> unitig:unitigs){
         num_kmers_in_input=num_kmers_in_input+unitig.second.length()-k+1;
     }
     return num_kmers_in_input;
 }
-float average_unitig_length(std::unordered_map<int,std::string> unitigs){
+float average_unitig_length(google::sparse_hash_map<int,std::string> unitigs){
     //find average size of unitigs in the graph
     float average=0;
     for(std::pair<int,std::string> elem:unitigs){
@@ -196,43 +201,56 @@ float average_unitig_length(std::unordered_map<int,std::string> unitigs){
 }
 int main(int argc,char **argv){
     //parse arguments
-    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
-    std::unordered_map<std::string,bool> k_mer;
+    google::sparse_hash_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
+    google::sparse_hash_map<std::string,bool> k_mer;
     //load the input graph
     GfaGraph g;
-    GfaGraph g2=g.LoadFromFile(std::get<1>(arguments.at("graphfile")));
-    bool verbose=std::get<0>(arguments.at("verbosity"));
+    GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
+    bool verbose=std::get<0>(arguments["verbosity"]);
     float time_kmtricks=0;
     //if we don't have a kmerfile, then a genome is passed
-    if(!std::get<0>(arguments.at("kmerfile"))){
-        std::string input_to_kmtricks=std::get<1>(arguments.at("graphfile"));
-        if(std::get<1>(arguments.at("graphfile")).length()>4 && !std::strcmp(std::get<1>(arguments.at("graphfile")).substr(std::get<1>(arguments.at("graphfile")).length()-3).c_str(),"gfa")){
+    if(!std::get<0>(arguments["kmerfile"])){
+        std::string input_to_kmtricks=std::get<1>(arguments["graphfile"]);
+        if(std::get<1>(arguments["graphfile"]).length()>4 && !std::strcmp(std::get<1>(arguments["graphfile"]).substr(std::get<1>(arguments["graphfile"]).length()-3).c_str(),"gfa")){
             //if the graph is not in fasta format, convert it to fasta as kmtricks accepts only fasta format (gzipped or not)
+<<<<<<< HEAD
+            g2.convertToFasta(std::get<1>(arguments["outputkmers"])+".fa");
+            input_to_kmtricks=std::get<1>(arguments["outputkmers"])+".fa";
+=======
             g2.convertToFasta("unitigs_fasta.fa");
             input_to_kmtricks="unitigs_fasta.fa";
+>>>>>>> main
         }
         //call kmtricks
         std::system("chmod +x utils.sh");
         auto start=std::chrono::steady_clock::now();
+<<<<<<< HEAD
+        std::system(("bash utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputkmers"])+".txt").c_str());
+        auto end =std::chrono::steady_clock::now();
+        time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
+        //load the kmers
+        k_mer=createHashTable(std::get<1>(arguments["outputkmers"])+".txt");
+=======
         std::system(("bash utils.sh "+std::get<1>(arguments.at("kvalue"))+" "+input_to_kmtricks+" "+std::get<1>(arguments.at("genomefile"))+" absent_kmers.txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
         k_mer=createHashTable("absent_kmers.txt");
+>>>>>>> main
     }
     else{
         //load the kmers
-        k_mer=createHashTable(std::get<1>(arguments.at("kmerfile")));
+        k_mer=createHashTable(std::get<1>(arguments["kmerfile"]));
     }
     //create the index of the graph
-    Index ind=Index(1000,stoi(std::get<1>(arguments.at("kvalue"))));//
+    Index ind=Index(1000,stoi(std::get<1>(arguments["kvalue"])));//
     auto start=std::chrono::steady_clock::now();
     ind.create(g2);
     auto end =std::chrono::steady_clock::now();
     float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     start=std::chrono::steady_clock::now();
     //construct the funitigs from the absent kmers
-    std::unordered_map<int,std::string> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
+    google::sparse_hash_map<int,std::string> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
     end=std::chrono::steady_clock::now();
     float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     /*
@@ -245,10 +263,10 @@ int main(int argc,char **argv){
     std::cout<<"# of unitigs in input is "<<original_unitigs<<std::endl;
     start=std::chrono::steady_clock::now();
     //index the funitigs (we store suffix->(id,position,orientation) and prefix->(id,position,orientation))
-    std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
+    google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
     end=std::chrono::steady_clock::now();
     float time_index_constructed_unitigs=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
-    std::unordered_map<int,std::string> merged=g2.get_nodes();
+    google::sparse_hash_map<int,std::string> merged=g2.get_nodes();
     std::cout<<"kmers in unitigs="<<total_kmers_in_unitigs(merged,31)<<" kmers absent"<<k_mer.size()<<std::endl;
     std::cout<<"Originally we have: "<<merged.size()<<" unitigs\n";
     std::cout<<constrct_unitigs.size()<<" constructed unitigs\n";
@@ -266,14 +284,14 @@ int main(int argc,char **argv){
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join\t number absent kmers \t average unitig length"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<"\t"<<num_kmer_absent<<"\t"<<average<<std::endl;
     //if we are testing with an already augmented graph
-    if(std::get<0>(arguments.at("test"))){
+    if(std::get<0>(arguments["test"])){
         GfaGraph g3;
-        GfaGraph to_compare=g3.LoadFromFile(std::get<1>(arguments.at("augmentedgraph")));
+        GfaGraph to_compare=g3.LoadFromFile(std::get<1>(arguments["augmentedgraph"]));
         validate_merging(canonicalUnitigs(merged),canonicalUnitigs(to_compare.get_nodes()));
     }
     //if the output file name prefix is passed as argument
-    if(std::get<0>(arguments.at("outputfilename"))){
-        write_unitigs_to_fasta(merged,std::get<1>(arguments.at("outputfilename"))+".fa");
+    if(std::get<0>(arguments["outputfilename"])){
+        write_unitigs_to_fasta(merged,std::get<1>(arguments["outputfilename"])+".fa");
     }
     //default autput file name
     else{

@@ -3,7 +3,8 @@
 #include "ParseGFA.h"
 #include <vector>
 #include <unordered_map>
-
+#include <sparsehash/sparse_hash_map>
+#include <tuple>
 #ifndef index_kmer_H
 #define index_kmer_H
 class Index
@@ -17,7 +18,9 @@ private:
     using a tuple to store the index <unitig id,position,orientation> of each (k-1)-mer
 
     */
-    std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;
+    google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;
+
+    //std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;
     
 public:
     //initialize the index
