@@ -178,15 +178,9 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
    bool orientation_unitig=std::get<2>(occurence_unitig);
    int id_graph=std::get<0>(occurence_graph);
    int id_constructed=std::get<0>(occurence_unitig);
-<<<<<<< HEAD
    std::string graph_u=graph_unitigs[id_graph];//make sure this does not throw exception
    std::string constructed_unitig=constructed_unitigs[id_constructed];
    std::tuple<std::string,bool> concat=can_we_merge(position_unitig,position_graph,orientation_unitig,orientation_graph,constructed_unitig,graph_u,index_graph);//concatinate the unitigs if possible
-=======
-   std::string graph_u=graph_unitigs.at(id_graph);
-   std::string constructed_unitig=constructed_unitigs.at(id_constructed);
-   std::tuple<std::string,bool> concat=can_we_merge(position_unitig,position_graph,orientation_unitig,orientation_graph,constructed_unitig,graph_u,index_graph);//concatenate the unitigs if possible
->>>>>>> main
    std::string merged=std::get<0>(concat);
    if(merged.length()>0){//the strings get concatenated
         *num_join=*num_join+1;

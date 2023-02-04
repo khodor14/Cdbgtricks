@@ -139,11 +139,7 @@ google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int 
             exit(0);
         }
     }
-<<<<<<< HEAD
-    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"])&&std::get<0>(arguments["outputkmers"]))||!(std::get<0>(arguments["kmerfile"])||std::get<0>(arguments["genomefile"]))){
-=======
-    if(!(std::get<0>(arguments.at("kvalue"))&&std::get<0>(arguments.at("graphfile")))||!(std::get<0>(arguments.at("kmerfile"))||std::get<0>(arguments.at("genomefile")))){
->>>>>>> main
+    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["kmerfile"]))||std::get<0>(arguments["genomefile"])){
         std::cerr<<"Some required arguments are missing\n";
         show_usage();
         exit(0);
@@ -213,30 +209,17 @@ int main(int argc,char **argv){
         std::string input_to_kmtricks=std::get<1>(arguments["graphfile"]);
         if(std::get<1>(arguments["graphfile"]).length()>4 && !std::strcmp(std::get<1>(arguments["graphfile"]).substr(std::get<1>(arguments["graphfile"]).length()-3).c_str(),"gfa")){
             //if the graph is not in fasta format, convert it to fasta as kmtricks accepts only fasta format (gzipped or not)
-<<<<<<< HEAD
-            g2.convertToFasta(std::get<1>(arguments["outputkmers"])+".fa");
-            input_to_kmtricks=std::get<1>(arguments["outputkmers"])+".fa";
-=======
             g2.convertToFasta("unitigs_fasta.fa");
             input_to_kmtricks="unitigs_fasta.fa";
->>>>>>> main
         }
         //call kmtricks
         std::system("chmod +x utils.sh");
         auto start=std::chrono::steady_clock::now();
-<<<<<<< HEAD
-        std::system(("bash utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputkmers"])+".txt").c_str());
-        auto end =std::chrono::steady_clock::now();
-        time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
-        //load the kmers
-        k_mer=createHashTable(std::get<1>(arguments["outputkmers"])+".txt");
-=======
-        std::system(("bash utils.sh "+std::get<1>(arguments.at("kvalue"))+" "+input_to_kmtricks+" "+std::get<1>(arguments.at("genomefile"))+" absent_kmers.txt").c_str());
+        std::system(("bash utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
         k_mer=createHashTable("absent_kmers.txt");
->>>>>>> main
     }
     else{
         //load the kmers

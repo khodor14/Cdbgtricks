@@ -23,9 +23,5 @@ target_link_directories(${PROJECT_NAME}
 )
 
 #linking to libraries
-<<<<<<< HEAD
-#target_link_libraries(${PROJECT_NAME} sparsehash)
-=======
 #target_link_libraries(${PROJECT_NAME} sparsehash)
 
->>>>>>> main
