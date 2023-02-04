@@ -21,7 +21,7 @@ Installing ccdbupdater: Currently we have only the source version
 * From source
 
   ```
-  git clone https://github.com/khodor14/ccdbgUpdater.git
+  git clone --recursive https://github.com/khodor14/ccdbgUpdater.git
   cd ccdbgUpdater && mkdir build && cd build
   cmake -S ../ -B .
   make
