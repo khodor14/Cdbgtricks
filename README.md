@@ -1,10 +1,11 @@
-[INTRODUCTION](#ccdbgupdater)  
+[INTRODUCTION](#ccdbgupdater)
 [INSTALLATION](#installation)
-[USAGE](#binary-usage)  
+[USAGE](#binary-usage)
 [EXAMPLES](#examples)
 [ALGORITHM](#algorithm)
 [CITATION](#citation)
 [CONTACT](#contact)
+
 # ccdbgUpdater
 ccdbgUpdater is a modular tool for updating a colored and compacted de Bruijn Graph. 
 This tool is on progress. 
