@@ -1,3 +1,10 @@
+[INTRODUCTION](#ccdbgupdater)  
+[INSTALLATION](#installation)
+[USAGE](#binary-usage)  
+[EXAMPLES](#examples)
+[ALGORITHM](#algorithm)
+[CITATION](#citation)
+[CONTACT](#contact)
 # ccdbgUpdater
 ccdbgUpdater is a modular tool for updating a colored and compacted de Bruijn Graph. 
 This tool is on progress. 
@@ -71,7 +78,7 @@ Options:
      ```
      ./ccdbgupdater --input_graph graph.gfa --input_genome B.fa -k 31 -o output_prefix
      ```
-     The compacted de Bruijn graph is updated with the absent 31-mers (`-k 31`) of file *B.fa* (`--input_genome B.fa`). Here [kmtricks](https://github.com/tlemane/kmtricks) is used to find the absent k-mers. The graph is written to file *output_prefix.gfa* (`-o output_prefix`).
+     The compacted de Bruijn graph is updated with the absent 31-mers (`-k 31`) of file *B.fa* (`--input_genome B.fa`). Here [kmtricks](https://github.com/tlemane/kmtricks) is used to find the absent k-mers. The graph is written to file *output_prefix.fa* (`-o output_prefix`).
 
 
 
