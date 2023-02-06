@@ -1,9 +1,9 @@
-[INTRODUCTION](#ccdbgupdater)
-[INSTALLATION](#installation)
-[USAGE](#binary-usage)
-[EXAMPLES](#examples)
-[ALGORITHM](#algorithm)
-[CITATION](#citation)
+[INTRODUCTION](#ccdbgupdater)   
+[INSTALLATION](#installation)   
+[USAGE](#binary-usage)  
+[EXAMPLES](#examples)   
+[ALGORITHM](#algorithm)   
+[CITATION](#citation)   
 [CONTACT](#contact)
 
 # ccdbgUpdater
