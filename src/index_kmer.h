@@ -41,6 +41,8 @@ public:
     void insertSubUnitig(std::string unitig,int id,int starting_position,int ending_position);
     //updating for all the (k-1)-mers of the unitig
     void update_unitig(std::string seq,int id,int previous_id,int starting_position,int ending_position);
+    void serialise(const std::string filename);
+    void deserialise(const std::string filename);
     ~Index()=default;
 };
 #endif // !index_kmer_H

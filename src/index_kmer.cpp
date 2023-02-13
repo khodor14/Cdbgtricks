@@ -6,6 +6,10 @@
 #include <string>
 #include <tuple>
 #include <sparsehash/sparse_hash_map>
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include "FileSerializer.hpp"
 Index::Index(int buckets,int k_size){
     k=k_size;
     number_of_buckets=buckets;
@@ -104,4 +108,22 @@ void Index::update_unitig(std::string seq,int current_id,int previous_id,int sta
     for(int position=starting_position;position<=ending_position;position++){
         update_k_1_mer(seq.substr(position,k-1),previous_id,current_id,position);
     }
+}
+/*
+loading the index from disk
+*/
+void Index::deserialise(const std::string filename){
+    FileSerializer deserialiser;
+    FILE *input = fopen(filename.c_str(), "rb");
+    index_table.unserialize(deserialiser,input);
+    fclose(input);
+}
+/*
+saving the index to disk
+*/
+void Index::serialise(const std::string filename){
+    FileSerializer serialiser;
+    FILE *out = fopen(filename.c_str(), "wb");
+    index_table.serialize(serialiser,out);
+    fclose(out);
 }
