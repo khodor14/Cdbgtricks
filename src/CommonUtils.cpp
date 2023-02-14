@@ -7,6 +7,9 @@
 #include <sstream>
 #include "CommonUtils.h"
 #include <sparsehash/sparse_hash_map>
+const char bToN={'A','C','G','T'};
+const char revN={'T','G','C','A'};
+const uint8_t revB={3,2,1,0};
 size_t baseToInt(char base){
     switch (base)
     {
@@ -39,12 +42,44 @@ uint64_t hash(uint64_t key) {
 }
 
 uint64_t hash(std::string kmer){
+    /*
+    convert kmer to 64 bits
+    */
     std::uint64_t result=0;
     for(int i=0;i<kmer.size();i++){
         result=result<<2;
         result=result|baseToInt(kmer[i]);
     }
-    return hash(result);
+    return result;
+}
+uint64_t reverseComplement(uint64_t kmer_bits, int k){
+    /*
+        takes the bits representation of a k-mer 
+        return the bits representation of its reverse complement
+    */
+   uint64_t reverse=0;
+   uint64_t tmp=kmer_bits;
+   for(i=k-1;i>=0;i--){
+        reverse=reverse<<2;
+        reverse=reverse|revB[tmp&3];
+        tmp=tmp>>2;
+   }
+   return reverse;
+}
+std::string to_string(uint64_t kmer_bits,int k){
+    /*
+    convert 64 bits to kmer
+    */
+    int i;
+    char kmer[k+1];
+    uint64_t tmp=kmer_bits;
+    for(i=k-1;i>=0;i--){
+        seq[i]=bToN[tmp&3];//take the right most 2 bits which represent the right most base in the k-mer
+        tmp=tmp>>2; //shift right to get the next base in the next iteration
+    }
+    kmer[k]='\0';
+
+    return kmer;
 }
 void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
     std::string line;

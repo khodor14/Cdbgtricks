@@ -15,3 +15,5 @@ std::string getCanonical(const std::string& s);
 bool isCanonical(const std::string& seq);
 google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name);
 void write_unitigs_to_fasta(google::sparse_hash_map<int,std::string> unitigs,std::string filename);
+std::string to_string(uint64_t kmer_bits,int k);
+uint64_t reverseComplement(uint64_t kmer_bits, int k);
