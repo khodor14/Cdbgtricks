@@ -60,7 +60,7 @@ void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int po
     for (int i=0;i<data.size();i++){
         //which occurens has the previous id, the old occurence
         if(std::get<0>(data[i])==prev_id){
-            data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
+            data[i]=std::tuple<int,int,bool>(current_id,position,isCanonical(k_1_mer));//update the values 
             break;//break since the (k-1)-mer occurs once in a unitig except for palindromic k-mers
         }
     }
@@ -112,7 +112,7 @@ void Index::update_unitig(std::string seq,int current_id,int previous_id,int sta
 /*
 loading the index from disk
 */
-void Index::deserialise(const std::string filename){
+void Index::deserialize(const std::string filename){
     FileSerializer deserialiser;
     FILE *input = fopen(filename.c_str(), "rb");
     index_table.unserialize(deserialiser,input);
@@ -121,7 +121,7 @@ void Index::deserialise(const std::string filename){
 /*
 saving the index to disk
 */
-void Index::serialise(const std::string filename){
+void Index::serialize(const std::string filename){
     FileSerializer serialiser;
     FILE *out = fopen(filename.c_str(), "wb");
     index_table.serialize(serialiser,out);
