@@ -215,7 +215,7 @@ int main(int argc,char **argv){
         //call kmtricks
         std::system("chmod +x utils.sh");
         auto start=std::chrono::steady_clock::now();
-        std::system(("bash utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
+        std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
