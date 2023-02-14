@@ -139,7 +139,7 @@ google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int 
             exit(0);
         }
     }
-    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["kmerfile"]))||std::get<0>(arguments["genomefile"])){
+    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["kmerfile"])||std::get<0>(arguments["genomefile"]))){
         std::cerr<<"Some required arguments are missing\n";
         show_usage();
         exit(0);
