@@ -3,13 +3,13 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <unordered_map>
 #include <sstream>
 #include "CommonUtils.h"
 #include <sparsehash/sparse_hash_map>
-const char bToN={'A','C','G','T'};
-const char revN={'T','G','C','A'};
-const uint8_t revB={3,2,1,0};
+#include <cassert>
+const char bToN[]={'A','C','G','T'};
+const char revN[]={'T','G','C','A'};
+const uint8_t revB[]={3,2,1,0};
 size_t baseToInt(char base){
     switch (base)
     {
@@ -180,4 +180,23 @@ bool isCanonical(const std::string& seq){
 			return true;
 		}
 	}
+}
+uint8_t bit_ecoding(std::string_view seq){
+    assert(seq.length()<=4);
+    uint8_t encode=0;
+    int i;
+    for(i=0;i<seq.length();i++){
+        encode=encode|(baseToInt(seq[i])<<(8-2*(i+1)));
+    }
+    return encode;
+}
+std::string bits_to_seq_4(uint8_t encoding,int length){
+    char seq[length+1];
+    uint8_t tmp=encoding;
+    for(int i=length-1;i>=0;i--){
+        seq[i]=bToN[tmp&3];
+        tmp=tmp>>2;
+    }
+    seq[length]='\0';
+    return seq;
 }

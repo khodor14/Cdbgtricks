@@ -139,7 +139,7 @@ google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int 
             exit(0);
         }
     }
-    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["kmerfile"]))||std::get<0>(arguments["genomefile"])){
+    if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["kmerfile"])||std::get<0>(arguments["genomefile"]))){
         std::cerr<<"Some required arguments are missing\n";
         show_usage();
         exit(0);
@@ -213,9 +213,9 @@ int main(int argc,char **argv){
             input_to_kmtricks="unitigs_fasta.fa";
         }
         //call kmtricks
-        std::system("chmod +x utils.sh");
+        std::system("chmod +x ../src/utils.sh");
         auto start=std::chrono::steady_clock::now();
-        std::system(("bash utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
+        std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
