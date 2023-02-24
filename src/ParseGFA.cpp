@@ -7,7 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
-#include <sparsehash/sparse_hash_map>
+#include <unordered_map>
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -177,6 +177,6 @@ std::vector<int> GfaGraph::find_out_neighbors(int node_id){
 void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 
 }
-google::sparse_hash_map<int,std::string> GfaGraph::get_nodes(){
+std::unordered_map<int,std::string> GfaGraph::get_nodes(){
 	return unitigs;
 }

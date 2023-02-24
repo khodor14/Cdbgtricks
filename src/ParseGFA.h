@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <sparsehash/sparse_hash_map>
 #ifndef ParseGFA_H
 #define ParseGFA_H
 
@@ -39,7 +38,7 @@ public:
 class GfaGraph
 {
 private:
-    google::sparse_hash_map<int,std::string> unitigs;
+    std::unordered_map<int,std::string> unitigs;
     std::vector<edge> edges;
     int max_node_id=0;
 public:
@@ -49,7 +48,7 @@ public:
     void convertToFasta(std::string filename);
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
-    google::sparse_hash_map<int,std::string> get_nodes();
+    std::unordered_map<int,std::string> get_nodes();
     void fixe_edges(int node_id,int new_node, bool from, bool to);
     int get_max_node_id();
     void set_max_node_id(int id);

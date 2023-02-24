@@ -13,5 +13,5 @@ void createHashTable(std::ifstream& readStructFile,std::vector<uint64_t> & hashe
 std::string reverseComplement(const std::string& s);
 std::string getCanonical(const std::string& s);
 bool isCanonical(const std::string& seq);
-google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name);
-void write_unitigs_to_fasta(google::sparse_hash_map<int,std::string> unitigs,std::string filename);
+std::unordered_map<std::string,bool> createHashTable(std::string file_name);
+void write_unitigs_to_fasta(std::unordered_map<int,std::string> unitigs,std::string filename);

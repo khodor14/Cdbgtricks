@@ -5,22 +5,69 @@
 #include <vector>
 #include <string>
 #include <tuple>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <sparsehash/sparse_hash_map>
-Index::Index(int buckets,int k_size){
+#include <sparsehash/dense_hash_map>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/string.hpp>
+#include <unordered_map>
+namespace boost {
+namespace serialization {
+template<class Archive, typename... Args>
+void serialize(Archive & ar, std::tuple<Args...> & t, const unsigned int version)
+{
+    ar & std::get<0>(t);
+    ar & std::get<1>(t);
+    ar & std::get<2>(t);
+}
+template<class Archive, typename Key, typename T>
+void save(Archive& ar, const google::dense_hash_map<Key, T>& map,
+          const unsigned int version)
+{
+    std::vector<std::pair<Key, T>> vec(map.begin(), map.end());
+    ar & vec;
+}
+
+template<class Archive, typename Key, typename T>
+void load(Archive& ar, google::dense_hash_map<Key, T>& map,
+          const unsigned int version)
+{
+    std::vector<std::pair<Key, T>> vec;
+    ar & vec;
+    map.set_empty_key(Key()); // set the empty key
+    //map.set_deleted_key(Key()); // set the deleted key
+    for (const auto& pair : vec) {
+        map[pair.first] = pair.second;
+    }
+}
+
+template<class Archive, typename Key, typename T>
+void serialize(Archive& ar, google::dense_hash_map<Key, T>& map,
+               const unsigned int version)
+{
+    split_free(ar, map, version);
+}
+}
+}
+Index::Index(int k_size){
     k=k_size;
-    number_of_buckets=buckets;
-    index_table.rehash(number_of_buckets);
 }
 int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
-    google::sparse_hash_map<int,std::string> nodes=graph.get_nodes();
+    std::unordered_map<int,std::string> nodes=graph.get_nodes();
+    index_table.set_empty_key("");
    for (std::pair<int, std::string> node : nodes){
         int id=node.first;
         std::string unitig=node.second;
         int i=0;
-        for(int i=0;i<=unitig.length()-k+1;++i){
+        for(i=0;i<=unitig.length()-k+1;++i){
             std::string sub=unitig.substr(i,k-1);
             std::string toStore=getCanonical(sub);
             bool orientation=isCanonical(sub);
@@ -104,4 +151,16 @@ void Index::update_unitig(std::string seq,int current_id,int previous_id,int sta
     for(int position=starting_position;position<=ending_position;position++){
         update_k_1_mer(seq.substr(position,k-1),previous_id,current_id,position);
     }
+}
+void Index::serialize(const std::string filename){
+  std::ofstream ofs(filename, std::ios::binary);
+  boost::archive::binary_oarchive oa(ofs);
+  oa << index_table;
+  ofs.close();
+}
+void Index::deserialize(const std::string filename){
+  std::ifstream ifs(filename, std::ios::binary);
+  boost::archive::binary_iarchive ia(ifs);
+  ia >> index_table;
+  ifs.close();
 }

@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <chrono>
-std::vector<char> possible_right_extension(std::string mer,google::sparse_hash_map<std::string,bool> &kmers_to_add_to_graph){
+std::vector<char> possible_right_extension(std::string mer,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
     /*
     the input is :a string (k-1)-mer to be extended from the right
                  :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
@@ -29,7 +29,7 @@ std::vector<char> possible_right_extension(std::string mer,google::sparse_hash_m
    return possible_character_for_extension;
 
 }
-std::string extend_right(std::string kmer, Index& unitigs_index,google::sparse_hash_map<std::string,bool> &kmers_to_add_to_graph){
+std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
     /*
     the input is: a string k-mer representing the k-mer to be extended from right
                 :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
@@ -86,13 +86,13 @@ std::string extend_right(std::string kmer, Index& unitigs_index,google::sparse_h
    //return the resultant k-mer
     return extended_kmer;
 }
-std::string unitig_from_kmers(std::string kmer,Index& unitig_index, google::sparse_hash_map<std::string,bool>& kmers){
+std::string unitig_from_kmers(std::string kmer,Index& unitig_index, std::unordered_map<std::string,bool>& kmers){
     std::string right=extend_right(kmer,unitig_index,kmers);//extend the right of the kmer
     std::string left=reverseComplement(extend_right(reverseComplement(kmer),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
     return left+right.substr(kmer.length(),right.length());//return the concatenation of left and right. Omit the first k characters of right because they are the suffix of left
 }
-google::sparse_hash_map<int,std::string> construct_unitigs_from_kmer(Index &unitig_index, google::sparse_hash_map<std::string,bool> &kmers){
-    google::sparse_hash_map<int,std::string> unitigs_map;//storing them in a map for fast access
+std::unordered_map<int,std::string> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<std::string,bool> &kmers){
+    std::unordered_map<int,std::string> unitigs_map;//storing them in a map for fast access
     int i=1;
     for (std::pair<std::string, bool> element : kmers)
     {
@@ -105,7 +105,7 @@ google::sparse_hash_map<int,std::string> construct_unitigs_from_kmer(Index &unit
     }
     return unitigs_map;
 }
-void split(google::sparse_hash_map<int,std::string> &graph_unitigs,Index &ind,int id,int position,int k,int *max_node_id,int *num_split,float *time_split,bool verbose){
+void split(std::unordered_map<int,std::string> &graph_unitigs,Index &ind,int id,int position,int k,int *max_node_id,int *num_split,float *time_split,bool verbose){
     /*
     The input are:
                 the unitigs of the graph
@@ -140,7 +140,7 @@ void split(google::sparse_hash_map<int,std::string> &graph_unitigs,Index &ind,in
         Note:this implementation needs to be oprimised
     */
 }
-int decision(const std::vector<std::tuple<int,int,bool>> &occ_graph,const std::vector<std::tuple<int,int,bool>> &occ_unitigs,google::sparse_hash_map<int,std::string> &unitigs,int k){
+int decision(const std::vector<std::tuple<int,int,bool>> &occ_graph,const std::vector<std::tuple<int,int,bool>> &occ_unitigs,std::unordered_map<int,std::string> &unitigs,int k){
     int decision=0;//0 for nothing,1 for split, 2 for merge
     if(occ_graph.size()==0){
         return decision;
@@ -163,7 +163,7 @@ int decision(const std::vector<std::tuple<int,int,bool>> &occ_graph,const std::v
     }
     return decision;
 }
-void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,bool> occurence_unitig,google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,google::sparse_hash_map<int,std::string> &graph_unitigs,google::sparse_hash_map<int,std::string> &constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose){
+void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,bool> occurence_unitig,std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,std::unordered_map<int,std::string> &graph_unitigs,std::unordered_map<int,std::string> &constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose){
     /*
         the inputs of the function:
                         the occurence of k-1 mer in the graph
@@ -336,7 +336,7 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
    }
     return std::tuple<std::string,bool>(concatenation,order);
 }
-void merge_unitigs(google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,google::sparse_hash_map<int,std::string>& graph_unitigs,google::sparse_hash_map<int,std::string>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,float * time_update,bool verbose,bool update_index){
+void merge_unitigs(std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,std::unordered_map<int,std::string>& graph_unitigs,std::unordered_map<int,std::string>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,float * time_update,bool verbose,bool update_index){
     /*
         this function takes the unitigs of the graph, the constructed unitigs and their index
 
@@ -367,7 +367,7 @@ void merge_unitigs(google::sparse_hash_map<std::string,std::vector<std::tuple<in
     auto end=std::chrono::steady_clock::now();
     *time_update=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
 }
-google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const google::sparse_hash_map<int,std::string>& constructed_unitigs,int k){
+std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const std::unordered_map<int,std::string>& constructed_unitigs,int k){
     /*
     This function takes the constructed unitigs and build an index for them
     It returns an index:
@@ -376,7 +376,7 @@ google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> index
                     (k-1) prefix of u ->(id of u,|u|-k+1,orientation)
         each suffix or prefix is associated with a vector of occurences in the constructed unitigs
     */
-  google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> index;//empty index
+  std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index;//empty index
   for(std::pair<int,std::string> elem:constructed_unitigs){//go over the constructed unitigs
     std::string prefix=elem.second.substr(0,k-1);//the prefix of unitig u=elem.second
     if(index.count(getCanonical(prefix))==0){//if it's not stored yet
