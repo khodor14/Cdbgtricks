@@ -18,8 +18,10 @@ ccdbgUpdater is developed in C++11
     * [GCC](https://gcc.gnu.org/) >= 4.8.5
 
 It relies on kmtricks to find the set of absent k-mers which are in the genome to be added but not in the graph
+
+* [Boost](https://www.boost.org/)
 ## Installation
-Installing kmtricks: First Install kmtricks
+Installing kmtricks: First Install kmtricks [version v1.2.1]
 * From [Bioconda](https://bioconda.github.io):
 
   ```
@@ -64,8 +66,9 @@ Options:
 	--augmented_graph the path to an already augmented graph in fasta or gfa
 			 it must be given if the argument --test is set to true
 	--output_file_name[-o] the name of the output file
+	--update_index[-u] index the constructed funitigs
+	--load_index[-li] the path to the saved index
 	-v verbosity
-  -u index the constructed funitigs
 ```
 
 ### Examples
