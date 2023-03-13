@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <sstream>
 #include "CommonUtils.h"
-#include <sparsehash/sparse_hash_map>
 #include <cassert>
+#include "unitig.h"
 const char bToN[]={'A','C','G','T'};
 const char revN[]={'T','G','C','A'};
 const uint8_t revB[]={3,2,1,0};
@@ -52,19 +52,20 @@ uint64_t hash(std::string kmer){
     }
     return result;
 }
-uint64_t reverseComplement(uint64_t kmer_bits, int k){
+std::tuple<uint64_t,bool> reverseComplementCanonical(uint64_t kmer_bits, int k){
     /*
         takes the bits representation of a k-mer 
         return the bits representation of its reverse complement
     */
    uint64_t reverse=0;
    uint64_t tmp=kmer_bits;
+   size_t i;
    for(i=k-1;i>=0;i--){
         reverse=reverse<<2;
         reverse=reverse|revB[tmp&3];
         tmp=tmp>>2;
    }
-   return reverse;
+   return std::tuple<uint64_t,bool>(std::min(reverse,kmer_bits),kmer_bits<reverse);
 }
 std::string to_string(uint64_t kmer_bits,int k){
     /*
@@ -74,7 +75,7 @@ std::string to_string(uint64_t kmer_bits,int k){
     char kmer[k+1];
     uint64_t tmp=kmer_bits;
     for(i=k-1;i>=0;i--){
-        seq[i]=bToN[tmp&3];//take the right most 2 bits which represent the right most base in the k-mer
+        kmer[i]=bToN[tmp&3];//take the right most 2 bits which represent the right most base in the k-mer
         tmp=tmp>>2; //shift right to get the next base in the next iteration
     }
     kmer[k]='\0';
@@ -94,7 +95,7 @@ void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
         hashes.push_back(hash(next_kmer));
     }
 }
-google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name){
+std::unordered_map<uint64_t,bool> createHashTable(std::string file_name){
     /*
     input is a file name of kmers, the output of kmtricks pipeline
     output is a hash table kmers->boolean
@@ -103,7 +104,7 @@ google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name)
     */
     std::ifstream file{file_name, std::ios::in};
     std::string line;
-    google::sparse_hash_map<std::string,bool> result;// we store here out kmers
+    std::unordered_map<uint64_t,bool> result;// we store here out kmers
     while(getline(file,line)){
         //getline(kmers,line);
         std::stringstream sstr {line};
@@ -112,20 +113,20 @@ google::sparse_hash_map<std::string,bool> createHashTable(std::string file_name)
 
         sstr >> next_kmer;
         sstr >> next_abundance;
-        result[getCanonical(next_kmer)]=false;
+        result[std::get<0>(reverseComplementCanonical(hash(next_kmer),next_kmer.length()))]=false;
     }
     return result;
 }
-void write_unitigs_to_fasta(google::sparse_hash_map<int,std::string> unitigs,std::string filename){
+void write_unitigs_to_fasta(std::unordered_map<int,Unitig> unitigs,std::string filename){
     /*
     This function takes the vector of unitigs as input
     It writes this unitigs to a fasta file
     */
     std::string filenameout(filename);//the name of the file
 	std::ofstream out(filenameout);//create the file
-	for(auto unitig:unitigs){//loop over all unitigs
+	for(std::pair<int,Unitig> unitig:unitigs){//loop over all unitigs
 		out<<">sequence"+std::to_string(unitig.first)<<std::endl;//write the header in fasta format
-		out<<unitig.second<<std::endl;//write the unitig
+		out<<unitig.second.to_string()<<std::endl;//write the unitig
 	}
 }
 char complement(char c){

@@ -1,4 +1,5 @@
 #include "ParseGFA.h"
+#include "unitig.h"
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -7,7 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
-#include <sparsehash/sparse_hash_map>
+#include <unordered_map>
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -68,7 +69,7 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			}
 			else {//  if (line[0] != '>'){ // not needed because implicit
 				DNA_sequence += line;
-				graph.unitigs[++id]=DNA_sequence;
+				graph.unitigs[++id]=Unitig(DNA_sequence);
 				if(id>graph.get_max_node_id()){
 					graph.set_max_node_id(id);
 				}
@@ -99,7 +100,7 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			if(id>graph.get_max_node_id()){
 				graph.set_max_node_id(id);
 			}
-			graph.unitigs[id]=seq;
+			graph.unitigs[id]=Unitig(seq);
 		}
 		if (line[0] == 'L')
 		{
@@ -144,9 +145,9 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 }
  void GfaGraph::convertToFasta(std::string filename){
 	std::ofstream out(filename);
-	for(std::pair<int,std::string> unitig:unitigs){
+	for(std::pair<int,Unitig> unitig:unitigs){
 		out<<">sequence"+std::to_string(unitig.first)<<std::endl;
-		out<<unitig.second<<std::endl;
+		out<<unitig.second.to_string()<<std::endl;
 	}
 }
 int GfaGraph::get_max_node_id(){
@@ -177,6 +178,6 @@ std::vector<int> GfaGraph::find_out_neighbors(int node_id){
 void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 
 }
-google::sparse_hash_map<int,std::string> GfaGraph::get_nodes(){
+std::unordered_map<int,Unitig> GfaGraph::get_nodes(){
 	return unitigs;
 }

@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <sstream>
-#include <sparsehash/sparse_hash_map>
+#include "unitig.h"
 void show_usage(){
     std::cerr<<"Usage:"<<"\n"
             <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
@@ -29,8 +29,8 @@ void show_usage(){
             <<"\t"<<"-v"<<" verbosity\n" 
             ;
 }
-google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
-    google::sparse_hash_map<std::string,std::tuple<bool,std::string>> arguments;
+std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
+    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments;
     arguments["graphfile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile2"]=std::tuple<bool,std::string>(false,"");//remove me
@@ -151,7 +151,7 @@ google::sparse_hash_map<std::string,std::tuple<bool,std::string>> parseArgs(int 
     }
     return arguments;
 }
-std::vector<std::string> canonicalUnitigs(google::sparse_hash_map<int,std::string> unitigs){
+std::vector<std::string> canonicalUnitigs(std::unordered_map<int,std::string> unitigs){
     std::vector<std::string> unitigs_vec;
     for(std::pair<int,std::string> elem:unitigs){
         unitigs_vec.push_back(getCanonical(elem.second));
@@ -180,14 +180,14 @@ void validate_merging(const std::vector<std::string>& merged,const std::vector<s
     std::cout<<"The augmented graph with my algo is the same as the original graph\n";
 
 }
-int total_kmers_in_unitigs(google::sparse_hash_map<int,std::string> unitigs,int k){
+int total_kmers_in_unitigs(std::unordered_map<int,std::string> unitigs,int k){
     int num_kmers_in_input=0;
     for(std::pair<int,std::string> unitig:unitigs){
         num_kmers_in_input=num_kmers_in_input+unitig.second.length()-k+1;
     }
     return num_kmers_in_input;
 }
-float average_unitig_length(google::sparse_hash_map<int,std::string> unitigs){
+float average_unitig_length(std::unordered_map<int,std::string> unitigs){
     //find average size of unitigs in the graph
     float average=0;
     for(std::pair<int,std::string> elem:unitigs){
@@ -197,8 +197,8 @@ float average_unitig_length(google::sparse_hash_map<int,std::string> unitigs){
 }
 int main(int argc,char **argv){
     //parse arguments
-    google::sparse_hash_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
-    google::sparse_hash_map<std::string,bool> k_mer;
+    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
+    std::unordered_map<uint64_t,bool> k_mer;
     //load the input graph
     GfaGraph g;
     GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
@@ -233,7 +233,7 @@ int main(int argc,char **argv){
     float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     start=std::chrono::steady_clock::now();
     //construct the funitigs from the absent kmers
-    google::sparse_hash_map<int,std::string> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
+    std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
     end=std::chrono::steady_clock::now();
     float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     /*
@@ -246,13 +246,10 @@ int main(int argc,char **argv){
     std::cout<<"# of unitigs in input is "<<original_unitigs<<std::endl;
     start=std::chrono::steady_clock::now();
     //index the funitigs (we store suffix->(id,position,orientation) and prefix->(id,position,orientation))
-    google::sparse_hash_map<std::string,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
+    std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> constrtc_index=index_constructed_unitigs(constrct_unitigs,ind.get_k());
     end=std::chrono::steady_clock::now();
     float time_index_constructed_unitigs=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
-    google::sparse_hash_map<int,std::string> merged=g2.get_nodes();
-    std::cout<<"kmers in unitigs="<<total_kmers_in_unitigs(merged,31)<<" kmers absent"<<k_mer.size()<<std::endl;
-    std::cout<<"Originally we have: "<<merged.size()<<" unitigs\n";
-    std::cout<<constrct_unitigs.size()<<" constructed unitigs\n";
+    std::unordered_map<int,Unitig> merged=g2.get_nodes();
     //statistics needed in testing
     int max_node_id=g2.get_max_node_id();
     int num_split=0;
@@ -267,11 +264,6 @@ int main(int argc,char **argv){
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join\t number absent kmers \t average unitig length"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<"\t"<<num_kmer_absent<<"\t"<<average<<std::endl;
     //if we are testing with an already augmented graph
-    if(std::get<0>(arguments["test"])){
-        GfaGraph g3;
-        GfaGraph to_compare=g3.LoadFromFile(std::get<1>(arguments["augmentedgraph"]));
-        validate_merging(canonicalUnitigs(merged),canonicalUnitigs(to_compare.get_nodes()));
-    }
     //if the output file name prefix is passed as argument
     if(std::get<0>(arguments["outputfilename"])){
         write_unitigs_to_fasta(merged,std::get<1>(arguments["outputfilename"])+".fa");
