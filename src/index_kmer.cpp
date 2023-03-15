@@ -21,7 +21,6 @@ int Index::get_k(){
 void Index::create(GfaGraph& graph){
    for (std::pair<int, Unitig> node : graph.get_nodes()){
         int id=node.first;
-        std::string unitig=node.second;
         int i=0;
         uint64_t i_th_mer=node.second.get_ith_mer(0,k-1);
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(i_th_mer,k-1);
@@ -48,11 +47,11 @@ void Index::create(GfaGraph& graph){
 	}
 }
 std::vector<std::tuple<int,int,bool>> Index::find(uint64_t kmer){
-    std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(kmer,k-1);
-    if(index_table.count(std::get<0>(seq_data))==0){
+    uint64_t canonical_kmer=canonical_bits(kmer,k-1);
+    if(index_table.count(canonical_kmer)==0){
         return std::vector<std::tuple<int,int,bool>>();
     }
-    return index_table[std::get<0>(seq_data)];
+    return index_table[canonical_kmer];
 }
 void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int position,bool keep_orient){
     /*

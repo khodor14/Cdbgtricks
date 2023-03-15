@@ -233,7 +233,7 @@ int main(int argc,char **argv){
     float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     start=std::chrono::steady_clock::now();
     //construct the funitigs from the absent kmers
-    std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer);   
+    std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer,stoi(std::get<1>(arguments["kvalue"])));   
     end=std::chrono::steady_clock::now();
     float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     /*
@@ -259,10 +259,8 @@ int main(int argc,char **argv){
     float time_update=0;
     //merge the unitigs of the graph with the funitigs
     merge_unitigs(constrtc_index,ind,merged,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true);
-    std::cout<<"After merging "<<total_kmers_in_unitigs(merged,31)<<std::endl;
-    float average=average_unitig_length(g2.get_nodes());
-    std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join\t number absent kmers \t average unitig length"<<std::endl;
-    std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<"\t"<<num_kmer_absent<<"\t"<<average<<std::endl;
+    std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join"<<std::endl;
+    std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<std::endl;
     //if we are testing with an already augmented graph
     //if the output file name prefix is passed as argument
     if(std::get<0>(arguments["outputfilename"])){

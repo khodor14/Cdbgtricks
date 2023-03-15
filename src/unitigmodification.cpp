@@ -33,12 +33,12 @@ std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constru
     pref.push_back(std::tuple<int,int,bool>(elem.first,0,std::get<1>(rev_canon_pref)));//add the new occurence to the vector
     index[std::get<0>(rev_canon_pref)]=pref;//store back the vector
     std::vector<std::tuple<int,int,bool>> suf=index[std::get<0>(rev_canon_suff)];//get the occurences of suffix
-    suf.push_back(std::tuple<int,int,bool>(elem.first,elem.second.unitig_length()-k+1,std::get<1>(rev_canon_pref)));//add the new occurence
-    index[getCanonical(suffix)]=suf;//store back the occurences of suffix
+    suf.push_back(std::tuple<int,int,bool>(elem.first,elem.second.unitig_length()-k+1,std::get<1>(rev_canon_suff)));//add the new occurence
+    index[std::get<0>(rev_canon_suff)]=suf;//store back the occurences of suffix
   }
   return index;//return the constructed index
 }
-std::vector<char> possible_right_extension(std::string mer,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
+std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph){
     /*
     the input is :a string (k-1)-mer to be extended from the right
                  :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
@@ -53,7 +53,7 @@ std::vector<char> possible_right_extension(std::string mer,std::unordered_map<st
    std::string alphabet="ACTG";
    for(int i=0;i<alphabet.length();i++){
         //the canonical of mer+character from the alphabet is present
-        if(kmers_to_add_to_graph.find(getCanonical(mer+alphabet[i]))!=kmers_to_add_to_graph.end()){
+        if(kmers_to_add_to_graph.find(canonical_bits((mer<<2)|baseToInt(alphabet[i])))!=kmers_to_add_to_graph.end()){
             //add the corresponding character to the vector
             possible_character_for_extension.push_back(alphabet[i]);
         }
@@ -62,7 +62,7 @@ std::vector<char> possible_right_extension(std::string mer,std::unordered_map<st
    return possible_character_for_extension;
 
 }
-std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_map<std::string,bool> &kmers_to_add_to_graph){
+std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64,bool> &kmers_to_add_to_graph){
     /*
     the input is: a string k-mer representing the k-mer to be extended from right
                 :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
@@ -71,7 +71,7 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
     the outpus is a extended string
     */
    std::string extended_kmer=kmer;
-   std::string suffix=kmer.substr(1,kmer.length());//taking the suffix of the kmer to extend it
+   uint64_t suffix=mer>>2;//taking the suffix of the kmer to extend it
   while (true)//as long as we can extended the (k-1)-mer suffix of the k-mer
   {
     /*
@@ -89,16 +89,16 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
     then we cannot extend ACTGA from the right
     N.B:to test this we send the reverse complement of the suffix and we try to extend it from right
     */
-    if(possible_right_extension(reverseComplement(suffix),kmers_to_add_to_graph).size()==1){
+    if(possible_right_extension(reverse_complement(suffix,unitigs_index.get_k()-1),kmers_to_add_to_graph).size()==1){
         //now we find the extensions of the actual suffix
         std::vector<char> possible_character_to_extend=possible_right_extension(suffix,kmers_to_add_to_graph);
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
             std::string key=suffix+character_to_add;
-            kmers_to_add_to_graph[getCanonical(key)]=true;
+            kmers_to_add_to_graph[canonical_bits((suffix<<2)|baseToInt(character_to_add))]=true;
             extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
-            suffix=suffix.substr(1,suffix.size())+character_to_add;
+            suffix=(suffix<<2)|baseToInt(character_to_add);
             //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
         }
         else{
@@ -119,18 +119,18 @@ std::string extend_right(std::string kmer, Index& unitigs_index,std::unordered_m
    //return the resultant k-mer
     return extended_kmer;
 }
-std::string unitig_from_kmers(std::string kmer,Index& unitig_index, std::unordered_map<std::string,bool>& kmers){
-    std::string right=extend_right(kmer,unitig_index,kmers);//extend the right of the kmer
-    std::string left=reverseComplement(extend_right(reverseComplement(kmer),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
+std::string unitig_from_kmers_string(std::string kmer,uint64_t mer,Index& unitig_index, std::unordered_map<uint64_t,bool>& kmers){
+    std::string right=extend_right(kmer,mer,unitig_index,kmers);//extend the right of the kmer
+    std::string left=reverseComplement(extend_right(reverseComplement(kmer),reverse_complement(mer,unitig_index.get_k()),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
     return left+right.substr(kmer.length(),right.length());//return the concatenation of left and right. Omit the first k characters of right because they are the suffix of left
 }
-Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<std::string,bool> &kmers){
+Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers){
     /*
     create a unitig from the bit encoding of the k-mer
     Input: uint64 representing the kmer, the index of graph and all kmers
     Return a unitig(8 bits per 4 bases,how many left unused bits(0 in this case) and how many right unused bits)
     */
-    return Unitig(unitig_from_kmers(to_string(kmer,unitig_index.get_k()-1),unitig_index,kmers));
+    return Unitig(unitig_from_kmers_string(to_string(kmer,unitig_index.get_k()),kmer,unitig_index,kmers));
 }
 std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers,int k){
     /*

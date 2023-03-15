@@ -1,7 +1,6 @@
-#include "CommonUtils.h"
-#include <vector>
 #ifndef unitig_H
 #define unitig_H
+#include <vector>
 class Unitig
 {
 private:
