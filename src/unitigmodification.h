@@ -6,7 +6,7 @@
 #include <unordered_map>
 std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const std::unordered_map<int,Unitig>& constructed_unitigs,int k);
 std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph);
-std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64,bool> &kmers_to_add_to_graph);
+std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph);
 std::string unitig_from_kmers_string(std::string kmer,uint64_t mer,Index& unitig_index, std::unordered_map<uint64_t,bool>& kmers);
 Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<std::string,bool> &kmers);
 std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers,int k);

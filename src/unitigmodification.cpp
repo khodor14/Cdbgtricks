@@ -53,7 +53,7 @@ std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint6
    std::string alphabet="ACTG";
    for(int i=0;i<alphabet.length();i++){
         //the canonical of mer+character from the alphabet is present
-        if(kmers_to_add_to_graph.find(canonical_bits((mer<<2)|baseToInt(alphabet[i])))!=kmers_to_add_to_graph.end()){
+        if(kmers_to_add_to_graph.find(canonical_bits((mer<<2)|baseToInt(alphabet[i]),31))!=kmers_to_add_to_graph.end()){
             //add the corresponding character to the vector
             possible_character_for_extension.push_back(alphabet[i]);
         }
@@ -62,7 +62,7 @@ std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint6
    return possible_character_for_extension;
 
 }
-std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64,bool> &kmers_to_add_to_graph){
+std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph){
     /*
     the input is: a string k-mer representing the k-mer to be extended from right
                 :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
@@ -95,8 +95,8 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
-            std::string key=suffix+character_to_add;
-            kmers_to_add_to_graph[canonical_bits((suffix<<2)|baseToInt(character_to_add))]=true;
+            //std::string key=suffix+character_to_add;
+            kmers_to_add_to_graph[canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k())]=true;
             extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
             suffix=(suffix<<2)|baseToInt(character_to_add);
             //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
@@ -203,7 +203,7 @@ void split(std::unordered_map<int,Unitig> &graph_unitigs,Index &ind,int id,int p
     //ind.insert(hash(right.substr(0,k-1)),new_id,0);//insert first (k-1)-mer into index
     //ind.update_unitig(right,new_id,id,1,right.length()-k+1);//update the id and position of all other (k-1)-mers
     ind.insert(left.get_ith_mer(0,ind.get_k()-1),new_id,0);//insert first (k-1)-mer into index
-    ind.update_unitig(right,new_id,id,1,right.length()-k+1,true);//update the id and position of all other (k-1)-mers
+    ind.update_unitig(right,new_id,id,1,right.unitig_length()-k+1,true);//update the id and position of all other (k-1)-mers
     graph_unitigs[new_id]=right;//insert the right portion into the data struction
     auto end=std::chrono::steady_clock::now();
     *time_split=*time_split+std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
@@ -250,7 +250,7 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
        int position2_u=abs(int(position_unitig-constructed_unitig.unitig_length()+index_graph.get_k()-1));//if its prefix then position1=0 and position2=|u|-k+1, if pos1=|u|-k+1 then pos2=0 so pos2=|pos1-|u|+k-1|
        std::vector<std::tuple<int,int,bool>> occ_g=index_graph.find(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1));
        std::vector<std::tuple<int,int,bool>> occ_u;
-       std::tuple<uint64_t,bool> data=reverseComplementCanonical(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1));
+       std::tuple<uint64_t,bool> data=reverseComplementCanonical(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1),index_graph.get_k()-1);
        if(unitig_index.count(std::get<0>(data))>0){
             occ_u=unitig_index[std::get<0>(data)];
        }
@@ -284,7 +284,7 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
                 /*
                 graph unitig 2+constructed unitig+graph unitig 1
                 */
-               merged=std::get<0>(concat_other_extremity)+merged.substr(constructed_unitig.length());
+               merged=std::get<0>(concat_other_extremity)+merged.substr(constructed_unitig.unitig_length());
                //update the index of the first unitig, as the orientation of (k-1)-mers may change due to the reverse complement call in the merge function
                Unitig merged_u=Unitig(merged);
                index_graph.update_unitig(merged_u,std::get<0>(occ_g.front()),std::get<0>(occ_g.front()),0,graph_unitigs[std::get<0>(occ_g.front())].unitig_length()-index_graph.get_k()+1,false);
@@ -300,14 +300,14 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
                 /*
                 graph unitig 1+constructed unitig+graph unitig 2
                 */
-               merged=merged+std::get<0>(concat_other_extremity).substr(constructed_unitig.length());
+               merged=merged+std::get<0>(concat_other_extremity).substr(constructed_unitig.unitig_length());
                //update the index of the first unitig, as the orientation of (k-1)-mers may change due to the reverse complement call in the merge function
                Unitig merged_u=Unitig(merged);
-               index_graph.update_unitig(merged_u,id_graph,id_graph,0,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+1);
+               index_graph.update_unitig(merged_u,id_graph,id_graph,0,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+1,false);
                 //insert the (k-1)-mers from the funitig (future unitig)
                index_graph.insertSubUnitig(merged_u,id_graph,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+2,merged.length()-graph_unitigs[std::get<0>(occ_g.front())].unitig_length()-1);//insert k-1 mers from constructed unitig to the index as 
                //update the id as well as the positions of the (k-1)-mer of the second unitig
-               index_graph.update_unitig(merged,id_graph,std::get<0>(occ_g.front()),merged.length()-graph_unitigs[std::get<0>(occ_g.front())].unitig_length(),merged.length()-index_graph.get_k()+1);//update the id and position of the k-1 mer of the unitig used for merge
+               index_graph.update_unitig(merged_u,id_graph,std::get<0>(occ_g.front()),merged.length()-graph_unitigs[std::get<0>(occ_g.front())].unitig_length(),merged.length()-index_graph.get_k()+1,false);//update the id and position of the k-1 mer of the unitig used for merge
                //associate the merged unitig (munitig) to the id of the left unitig
                graph_unitigs[id_graph]=merged_u;
                graph_unitigs.erase(std::get<0>(occ_g.front()));//remove the unitig used for merge
@@ -319,26 +319,25 @@ void checkAndMerge(std::tuple<int,int,bool> occurence_graph,std::tuple<int,int,b
        }
        if(dec==1 || dec==0){
         auto start=std::chrono::steady_clock::now();
+        Unitig merged_u=Unitig(merged);
         if(std::get<1>(concat)){
             //update the orientation
-            Unitig merged_u=Unitig(merged);
-            index_graph.update_unitig(merged_u,id_graph,id_graph,0,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+1);
+            index_graph.update_unitig(merged_u,id_graph,id_graph,0,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+1,false);
             //insert the (k-1)-mers from funitig
-            index_graph.insertSubUnitig(merged,id_graph,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+2,merged.length()-index_graph.get_k()+1);//insert (k-1)-mers from constructed unitigs 
+            index_graph.insertSubUnitig(merged_u,id_graph,graph_unitigs[id_graph].unitig_length()-index_graph.get_k()+2,merged.length()-index_graph.get_k()+1);//insert (k-1)-mers from constructed unitigs 
         }
         else{
             //insert the (k-1)-mers from funitig
-            Unitig merged_u=Unitig(merged);
             index_graph.insertSubUnitig(merged_u,id_graph,0,constructed_unitig.unitig_length()-index_graph.get_k());//insert k-1 mers from constructed unitigs
             //update the position,the orientation of (k-1)-mers from the unitig used for merge
-            index_graph.update_unitig(merged,id_graph,id_graph,constructed_unitig.unitig_length()-index_graph.get_k()+1,merged.length()-index_graph.get_k()+1);//shift positions
+            index_graph.update_unitig(merged_u,id_graph,id_graph,constructed_unitig.unitig_length()-index_graph.get_k()+1,merged.length()-index_graph.get_k()+1,false);//shift positions
         }
-        graph_unitigs[id_graph]=Unitig(merged);//to be changed by adding default and assignment operator =
+        graph_unitigs[id_graph]=merged_u;//to be changed by adding default and assignment operator =
         constructed_unitigs.erase(id_constructed);//remove this funitig
         auto end=std::chrono::steady_clock::now();
         *time_join=*time_join+std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
        }
-       unitig_index.erase(std::get<0>(reverseComplementCanonical(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1))));//remove the second extremity from the index
+       unitig_index.erase(std::get<0>(reverseComplementCanonical(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1),index_graph.get_k()-1)));//remove the second extremity from the index
        
    }
 }
@@ -417,7 +416,7 @@ void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bo
         *max_node_id=*max_node_id+1;
         graph_unitigs[*max_node_id]=const_unitig.second;
         if(update_index){
-            graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.length()-graph_index.get_k()+1);
+            graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.unitig_length()-graph_index.get_k()+1);
         }
     }
    }

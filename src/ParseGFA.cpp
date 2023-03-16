@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstring>
 #include <unordered_map>
+#include <string_view>
 //Node::Node:
 Node::Node(int id,std::string seq){
 	this->id=id;
@@ -69,7 +70,7 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			}
 			else {//  if (line[0] != '>'){ // not needed because implicit
 				DNA_sequence += line;
-				graph.unitigs[++id]=Unitig(DNA_sequence);
+				graph.unitigs[++id]=Unitig(std::string_view(DNA_sequence));
 				if(id>graph.get_max_node_id()){
 					graph.set_max_node_id(id);
 				}
@@ -100,7 +101,7 @@ GfaGraph GfaGraph::LoadFromStream(std::ifstream &file,bool gfa){
 			if(id>graph.get_max_node_id()){
 				graph.set_max_node_id(id);
 			}
-			graph.unitigs[id]=Unitig(seq);
+			graph.unitigs[id]=Unitig(std::string_view(seq));
 		}
 		if (line[0] == 'L')
 		{

@@ -21,26 +21,26 @@ int Index::get_k(){
 void Index::create(GfaGraph& graph){
    for (std::pair<int, Unitig> node : graph.get_nodes()){
         int id=node.first;
-        int i=0;
+        int i;
         uint64_t i_th_mer=node.second.get_ith_mer(0,k-1);
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(i_th_mer,k-1);
         if(index_table.count(std::get<0>(seq_data))==0){
-            index_table[std::get<0>(seq_data)]=std::vector<std::tuple<int,int,bool>>;
+            index_table[std::get<0>(seq_data)]=std::vector<std::tuple<int,int,bool>>();
         }
-        std::vector<std::tuple<int,int,bool>> data;
+        std::vector<std::tuple<int,int,bool>> data=index_table[std::get<0>(seq_data)];
         data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
         index_table[std::get<0>(seq_data)]=data;
-        for(i=1;i<=unitig.length()-k+1;++i){
-            i_th_mer=node.second.get_next_mer(i_th_mer,i,k-1)
+        for(i=1;i<=node.second.unitig_length()-k+1;++i){
+            i_th_mer=node.second.get_next_mer(i_th_mer,i,k-1);
             seq_data=reverseComplementCanonical(i_th_mer,k-1);
             if(index_table.count(std::get<0>(seq_data))==0){
                     std::vector<std::tuple<int,int,bool>> data_i;
-                    data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+                    data_i.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
                     index_table[std::get<0>(seq_data)]=data_i;
             }
             else{
                 std::vector<std::tuple<int,int,bool>> data_i=index_table[std::get<0>(seq_data)];
-                data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+                data_i.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
                 index_table[std::get<0>(seq_data)]=data_i;
             }
         }
@@ -67,7 +67,7 @@ void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int posit
         //which occurens has the previous id, the old occurence
         if(std::get<0>(data[i])==prev_id){
             if(keep_orient){
-                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data));//update the values 
+                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
             }
             else{
                 std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
@@ -76,7 +76,7 @@ void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int posit
             break;//break since the (k-1)-mer occurs once in a unitig except for palindromic k-mers
         }
     }
-    index_table[std::get<0>(kmer_data)]=data;
+    index_table[canonical_bits(k_1_mer,k-1)]=data;
 }
 void Index::insert(uint64_t k_1_mer,int id,int position){
     /*

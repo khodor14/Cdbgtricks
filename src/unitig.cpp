@@ -3,17 +3,18 @@
 #include <string_view>
 #include<algorithm> 
 #include<iterator>
+#include <cstdint>
+#include <string>
 #include <cmath>
-Unitig::Unitig(std::string unitig){
+Unitig::Unitig(std::string_view unitig){
     left_unused_bits=0;//when storing 8 bits for every other 4 bases, the left unused bits is 0 since we store from left to right
-    std::string_view copy{unitig};
     //encode every 4 bases
-    for(int i=0;i+4<=copy.length();i+=4){
-        unitig_encoding.push_back(bit_ecoding(copy.substr(i,4)));
+    for(int i=0;i+4<=unitig.length();i+=4){
+        unitig_encoding.push_back(bit_encoding(unitig.substr(i,4)));
     }
     //encoding the remaining bases, a substring of 0<length<4
-    if(copy.length()%4!=0){
-        unitig_encoding.push_back(bit_ecoding(copy.substr(copy.length()-copy.length()%4)));
+    if(unitig.length()%4!=0){
+        unitig_encoding.push_back(bit_encoding(unitig.substr(unitig.length()-unitig.length()%4)));
         right_unused_bits=(4-unitig.length()%4)*2;//the right unused bits is the number of remaining characters times 2
     }
     else{
@@ -70,7 +71,7 @@ bool Unitig::operator==(const Unitig& other) const {
     //two unitigs are equal if they have the same left and right unused bits
     return left_unused_bits==other.left_unused_bits && right_unused_bits==other.right_unused_bits && unitig_encoding.size()==other.unitig_encoding.size() &&std::equal(unitig_encoding.begin(), unitig_encoding.end(),other.unitig_encoding.begin());
 }
-uint64_t Unitig::get_ith_mer(int i,int k){
+uint64_t Unitig::get_ith_mer(const int i,const int k){
     /*
         return the bit coding of the k-1 mer starting at i
     */
@@ -85,7 +86,7 @@ uint64_t Unitig::get_ith_mer(int i,int k){
     letter_encoded+=4;
    }
 }
-uint64_t Unitig::get_next_mer(uint64_t mer,int i,int k){
+uint64_t Unitig::get_next_mer(uint64_t mer,const int i,const int k){
     /*
     given the encoding of the (k-1)-mer at position i-1, and the position i we need to get the one at i
     */
@@ -100,7 +101,7 @@ void Unitig::insert_back(char base){
     /*
     add one base to the right of the unitig
     */
-    uint8_t base_encoding=bit_ecoding(std::string_view(std::string(1,base)));
+    uint8_t base_encoding=bit_encoding(std::string_view(std::string(1,base)));
     if(right_unused_bits!=0){//can we add directly to the last element
         base_encoding=base_encoding>>(8-right_unused_bits);
         unitig_encoding[unitig_encoding.size()-1]=(unitig_encoding[unitig_encoding.size()-1]<<right_unused_bits)|base_encoding;
@@ -115,7 +116,7 @@ void Unitig::insert_front(char base){
     /*
     add one base at the beginning 
     */
-    uint8_t base_encoding=bit_ecoding(std::string_view(std::string(1,base)));
+    uint8_t base_encoding=bit_encoding(std::string_view(std::string(1,base)));
     if(left_unused_bits!=0){//can we add it directly
         base_encoding=base_encoding>>(left_unused_bits-2);
         unitig_encoding[0]=(unitig_encoding[0]&(0xff>>left_unused_bits))|base_encoding;//mask unnecessary bits

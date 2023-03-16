@@ -193,7 +193,7 @@ bool isCanonical(const std::string& seq){
 		}
 	}
 }
-uint8_t bit_ecoding(std::string_view seq){
+uint8_t bit_encoding(std::string_view seq){
     assert(seq.length()<=4);
     uint8_t encode=0;
     int i;
