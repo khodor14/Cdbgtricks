@@ -5,6 +5,7 @@
 #include<iterator>
 #include <cstdint>
 #include <string>
+#include <cassert>
 #include <cmath>
 Unitig::Unitig(std::string_view unitig){
     left_unused_bits=0;//when storing 8 bits for every other 4 bases, the left unused bits is 0 since we store from left to right
@@ -20,8 +21,6 @@ Unitig::Unitig(std::string_view unitig){
     else{
         right_unused_bits=0;//0 since we don't have remaining characters
     }
-
-
 }
 Unitig::Unitig(uint8_t left_unused,uint8_t right_unused, std::vector<uint8_t> encoding){
     /*
@@ -50,17 +49,11 @@ std::string Unitig::to_string(){
     useful to output the graph
     special care for the first and last encoding as they contain unused characters
     */
-   std::string unitig="";
-   if(left_unused_bits==0){
-    unitig+=bits_to_seq_4(unitig_encoding[0],4);
-   }
-   else{
-    unitig+=bits_to_seq_4(unitig_encoding[0],4).substr(left_unused_bits/2);
-   }
+   std::string unitig=bits_to_seq_4(unitig_encoding[0],4).substr(left_unused_bits/2);//take the first characters
    for(size_t i=1;i<unitig_encoding.size()-1;i++){
-    unitig=unitig+bits_to_seq_4(unitig_encoding[i],4);
+    unitig=unitig+bits_to_seq_4(unitig_encoding[i],4);//take 4 characters at time and append
    }
-   unitig=unitig+bits_to_seq_4(unitig_encoding[unitig_encoding.size()-1],4).substr(0,4-right_unused_bits/2);
+   unitig=unitig+bits_to_seq_4(unitig_encoding[unitig_encoding.size()-1],4).substr(0,4-right_unused_bits/2);//add the last
    return unitig;
 }
 bool Unitig::operator==(const Unitig& other) const {
@@ -75,25 +68,29 @@ uint64_t Unitig::get_ith_mer(const int i,const int k){
     /*
         return the bit coding of the k-1 mer starting at i
     */
-   int j = std::max(0, static_cast<int>(std::ceil((i-4 + (int)(left_unused_bits/2))/4)));//the position of the bit encoding of 4-mer in the vector which contains the letter i
-   int pos_letter_in_bits=std::max(0,static_cast<int>(std::ceil((i-4 + (int)(left_unused_bits/2))%4)));//the position of ith letter in the bit encoding
-   uint64_t answer=unitig_encoding[j]>>(2*pos_letter_in_bits);
-
+   int j = static_cast<int>(std::floor((i + (int)(left_unused_bits>>1))/4));//the position of the bit encoding of 4-mer in the vector which contains the letter i
+   int pos_letter_in_bits=(i+(int)(left_unused_bits>>1))%4;//the position of ith letter in the bit encoding
+   uint64_t answer=unitig_encoding[j]&(0xff>>(2*pos_letter_in_bits));//mask the left bits
    int letter_encoded=4-pos_letter_in_bits;
-   while(letter_encoded<=k && j<unitig_encoding.size()){
+   while(letter_encoded+4<=k && j<unitig_encoding.size()){
     j=j+1;
     answer=(answer<<8)|unitig_encoding[j];
     letter_encoded+=4;
    }
+   if(letter_encoded<k){
+    j=j+1;
+    answer=(answer<<(2*(k-letter_encoded)))|(unitig_encoding[j]>>(8-2*(k-letter_encoded)));
+   }
+   return answer;
 }
 uint64_t Unitig::get_next_mer(uint64_t mer,const int i,const int k){
     /*
     given the encoding of the (k-1)-mer at position i-1, and the position i we need to get the one at i
     */
-   int j = std::max(0, static_cast<int>(std::ceil((i+k-5 + (int)(left_unused_bits/2))/4)));//the position of the bit encoding of 4-mer in the vector which contains the letter i
-   int pos_letter_in_bits=std::max(0,static_cast<int>(std::ceil((i+k-5 + (int)(left_unused_bits/2))%4)));//the position of ith letter in the bit encoding
+   int j = static_cast<int>(std::floor((i+k-1 + (int)(left_unused_bits>>1))/4));//the position of the bit encoding of 4-mer in the vector which contains the letter i+k-1 to be added to the  (i-1)'k-thmer
+   int pos_letter_in_bits=(i+k-1+(int)(left_unused_bits>>1))%4;//the position of ith letter in the bit encoding
    uint8_t base=(unitig_encoding[j]<<2*pos_letter_in_bits)>>6;//shift by double the pos of the letter to the left then by 6, if we have 10110011 and pos=3 then we get 00000011
-   uint64_t answer=((mer<<2)|base)&(0xffffffff>>(64-2*k));//set the rightmost two bits then mask the left most unused bits
+   uint64_t answer=((mer<<2)|base)&(0xffffffffffffffff>>(64-2*k));//set the rightmost two bits then mask the left most unused bits
    return answer;
 
 }
@@ -101,14 +98,14 @@ void Unitig::insert_back(char base){
     /*
     add one base to the right of the unitig
     */
-    uint8_t base_encoding=bit_encoding(std::string_view(std::string(1,base)));
+    uint8_t base_encoding=baseToInt(base);
     if(right_unused_bits!=0){//can we add directly to the last element
-        base_encoding=base_encoding>>(8-right_unused_bits);
-        unitig_encoding[unitig_encoding.size()-1]=(unitig_encoding[unitig_encoding.size()-1]<<right_unused_bits)|base_encoding;
+        base_encoding=base_encoding<<(right_unused_bits-2);
+        unitig_encoding[unitig_encoding.size()-1]=(unitig_encoding[unitig_encoding.size()-1]&(0xff<<right_unused_bits))|base_encoding;
         right_unused_bits-=2;
     }
     else{
-        unitig_encoding.push_back(base_encoding);//otherwise insert it
+        unitig_encoding.push_back(base_encoding<<6);//otherwise insert it
         right_unused_bits=6;
     }
 }
@@ -116,14 +113,15 @@ void Unitig::insert_front(char base){
     /*
     add one base at the beginning 
     */
-    uint8_t base_encoding=bit_encoding(std::string_view(std::string(1,base)));
+    uint8_t base_encoding=baseToInt(base);
+    
     if(left_unused_bits!=0){//can we add it directly
-        base_encoding=base_encoding>>(left_unused_bits-2);
+        base_encoding=base_encoding<<(8-left_unused_bits);
         unitig_encoding[0]=(unitig_encoding[0]&(0xff>>left_unused_bits))|base_encoding;//mask unnecessary bits
         left_unused_bits-=2;
     }
     else{
-        unitig_encoding.emplace(unitig_encoding.begin(), base_encoding>>6);//otherwise add the encoding at the beginning
+        unitig_encoding.emplace(unitig_encoding.begin(), base_encoding);//otherwise add the encoding at the beginning
         left_unused_bits=6;
     }
 }

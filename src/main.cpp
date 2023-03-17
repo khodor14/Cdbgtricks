@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <sstream>
+#include <cmath>
 #include "unitig.h"
 void show_usage(){
     std::cerr<<"Usage:"<<"\n"
@@ -151,57 +152,16 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     }
     return arguments;
 }
-std::vector<std::string> canonicalUnitigs(std::unordered_map<int,std::string> unitigs){
-    std::vector<std::string> unitigs_vec;
-    for(std::pair<int,std::string> elem:unitigs){
-        unitigs_vec.push_back(getCanonical(elem.second));
-    }
-    std::sort(unitigs_vec.begin(),unitigs_vec.end());
-    
-    return unitigs_vec;
-}
-void validate_merging(const std::vector<std::string>& merged,const std::vector<std::string>& original_graph){
-    /*
-    two sorted vectors of unitigs
-    the first one is the output of the algorithm we developed
-    the second one is a graph that already constains the k-mers we added to the input graph of our algo
-    */ 
-    if(merged.size()!=original_graph.size()){
-        std::cout<<"The augmented graph with my algo is not the same as the original graph (different number of unitigs)\n";
-        std::cout<<merged.size()<<" "<<original_graph.size()<<"\n";
-        return;
-    }
-    for(int i=0;i<merged.size();i++){
-        if(strcmp(merged[i].c_str(),original_graph[i].c_str())){
-            std::cout<<"The augmented graph with my algo is not the same as the original graph\n";
-            return;
-        }
-    }
-    std::cout<<"The augmented graph with my algo is the same as the original graph\n";
-
-}
-int total_kmers_in_unitigs(std::unordered_map<int,std::string> unitigs,int k){
-    int num_kmers_in_input=0;
-    for(std::pair<int,std::string> unitig:unitigs){
-        num_kmers_in_input=num_kmers_in_input+unitig.second.length()-k+1;
-    }
-    return num_kmers_in_input;
-}
-float average_unitig_length(std::unordered_map<int,std::string> unitigs){
-    //find average size of unitigs in the graph
-    float average=0;
-    for(std::pair<int,std::string> elem:unitigs){
-        average=average+elem.second.length();
-    }
-    return average/unitigs.size();
-}
 int main(int argc,char **argv){
     //parse arguments
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     std::unordered_map<uint64_t,bool> k_mer;
     //load the input graph
+    auto start_g=std::chrono::steady_clock::now();
     GfaGraph g;
     GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
+    auto end_G=std::chrono::steady_clock::now();
+    std::cout<<"Time to load the graph is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(end_G - start_g).count()*1e-9<<std::endl;
     bool verbose=std::get<0>(arguments["verbosity"]);
     float time_kmtricks=0;
     //if we don't have a kmerfile, then a genome is passed

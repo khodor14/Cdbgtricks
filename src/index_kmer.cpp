@@ -25,11 +25,15 @@ void Index::create(GfaGraph& graph){
         uint64_t i_th_mer=node.second.get_ith_mer(0,k-1);
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(i_th_mer,k-1);
         if(index_table.count(std::get<0>(seq_data))==0){
-            index_table[std::get<0>(seq_data)]=std::vector<std::tuple<int,int,bool>>();
+            std::vector<std::tuple<int,int,bool>> data;
+            data.push_back(std::tuple<int,int,bool>(node.first,0,std::get<0>(seq_data)));
+            index_table[std::get<0>(seq_data)]=data;
         }
-        std::vector<std::tuple<int,int,bool>> data=index_table[std::get<0>(seq_data)];
-        data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
-        index_table[std::get<0>(seq_data)]=data;
+        else{
+            std::vector<std::tuple<int,int,bool>> data=index_table[std::get<0>(seq_data)];
+            data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+            index_table[std::get<0>(seq_data)]=data;
+        }
         for(i=1;i<=node.second.unitig_length()-k+1;++i){
             i_th_mer=node.second.get_next_mer(i_th_mer,i,k-1);
             seq_data=reverseComplementCanonical(i_th_mer,k-1);

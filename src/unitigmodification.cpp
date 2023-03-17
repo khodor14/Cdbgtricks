@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <chrono>
 #include "unitig.h"
+#include <cmath>
 std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const std::unordered_map<int,Unitig>& constructed_unitigs,int k){
     /*
     This function takes the constructed unitigs and build an index for them
@@ -38,7 +39,7 @@ std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constru
   }
   return index;//return the constructed index
 }
-std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph){
+std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph,int k){
     /*
     the input is :a string (k-1)-mer to be extended from the right
                  :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
@@ -53,7 +54,7 @@ std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint6
    std::string alphabet="ACTG";
    for(int i=0;i<alphabet.length();i++){
         //the canonical of mer+character from the alphabet is present
-        if(kmers_to_add_to_graph.find(canonical_bits((mer<<2)|baseToInt(alphabet[i]),31))!=kmers_to_add_to_graph.end()){
+        if(kmers_to_add_to_graph.find(canonical_bits(((mer<<2)&(0xffffffffffffffff>>(64-2*k)))|baseToInt(alphabet[i]),k))!=kmers_to_add_to_graph.end()){
             //add the corresponding character to the vector
             possible_character_for_extension.push_back(alphabet[i]);
         }
@@ -71,15 +72,15 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
     the outpus is a extended string
     */
    std::string extended_kmer=kmer;
-   uint64_t suffix=mer>>2;//taking the suffix of the kmer to extend it
-  while (true)//as long as we can extended the (k-1)-mer suffix of the k-mer
+   uint64_t suffix=mer&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));//taking the suffix of the kmer to extend it
+   bool flag=true;
+  while (flag)//as long as we can extended the (k-1)-mer suffix of the k-mer
   {
     /*
     if the (k-1)-mer suffix of the k-mer is not in the graph
     we can try to extends
     */
-   
-   if(unitigs_index.find(hash(suffix)).size()==0){
+   if(unitigs_index.find(suffix).size()==0){
     
     
     //we cannot extend if the suffix of the k-mer has left extension
@@ -89,16 +90,20 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
     then we cannot extend ACTGA from the right
     N.B:to test this we send the reverse complement of the suffix and we try to extend it from right
     */
-    if(possible_right_extension(reverse_complement(suffix,unitigs_index.get_k()-1),kmers_to_add_to_graph).size()==1){
+    if(possible_right_extension(reverse_complement(suffix,unitigs_index.get_k()-1),kmers_to_add_to_graph,unitigs_index.get_k()).size()==1){
         //now we find the extensions of the actual suffix
-        std::vector<char> possible_character_to_extend=possible_right_extension(suffix,kmers_to_add_to_graph);
+        std::vector<char> possible_character_to_extend=possible_right_extension(suffix,kmers_to_add_to_graph,unitigs_index.get_k());
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
             //std::string key=suffix+character_to_add;
+            if(kmers_to_add_to_graph.at(canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k()))){
+                flag=false;
+                std::cout<<"Already visited "<<kmer<<" "<<extended_kmer<<std::endl;
+            }
             kmers_to_add_to_graph[canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k())]=true;
             extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
-            suffix=(suffix<<2)|baseToInt(character_to_add);
+            suffix=((suffix<<2)|baseToInt(character_to_add))&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));
             //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
         }
         else{
@@ -143,9 +148,9 @@ std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, 
     {
         if(!element.second){//if this k-mer was not used in any unitig
             kmers[element.first]=true;
-            Unitig res=unitig_from_kmers(element.first,unitig_index,kmers);//to be modified according to the map, the map shoul gives int->bool
-            unitigs_map[i]=res;//create unitig from this k-mer
-            i++;
+            Unitig res=unitig_from_kmers(element.first,unitig_index,kmers);//create unitig from this k-mer
+            unitigs_map[i]=res;//put it back to map
+            i++;            
         }
     }
     return unitigs_map;
@@ -192,9 +197,10 @@ void split(std::unordered_map<int,Unitig> &graph_unitigs,Index &ind,int id,int p
     int new_id=*max_node_id+1;//new id to modify, not a good solution, should modify the merge function before
     Unitig original_unitig=graph_unitigs[id];//.at(id);
     *num_split=*num_split+1;
-    Unitig left=Unitig(0,(8-2*(position+ind.get_k()-1)%4),std::vector<uint8_t>(original_unitig.get_encoding().begin(),original_unitig.get_encoding().begin()+(position+ind.get_k()-1)/2));
+    std::vector<uint8_t> encoding=original_unitig.get_encoding();//creating temp copy of the vector
+    Unitig left=Unitig(original_unitig.get_left_unused(),2*(3-(position+ind.get_k()-2+original_unitig.get_left_unused()>>1)%4),std::vector<uint8_t>(encoding.begin(),encoding.begin()+1+static_cast<int>(std::floor((position +ind.get_k()-2+ (int)(original_unitig.get_left_unused()>>1))/4))));
     //original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
-    Unitig right=Unitig(2*(position%4),original_unitig.get_right_unused(),std::vector<uint8_t>(original_unitig.get_encoding().begin()+position/4,original_unitig.get_encoding().end()));//take the right from position till the end
+    Unitig right=Unitig(2*((position+original_unitig.get_left_unused()>>1)%4),original_unitig.get_right_unused(),std::vector<uint8_t>(encoding.begin()+static_cast<int>(std::floor((position + (int)(original_unitig.get_left_unused()>>1))/4)),encoding.end()));//take the right from position till the end
     
     graph_unitigs[id]=left;//keep the id but change the unitig
     /*
@@ -202,7 +208,7 @@ void split(std::unordered_map<int,Unitig> &graph_unitigs,Index &ind,int id,int p
     */
     //ind.insert(hash(right.substr(0,k-1)),new_id,0);//insert first (k-1)-mer into index
     //ind.update_unitig(right,new_id,id,1,right.length()-k+1);//update the id and position of all other (k-1)-mers
-    ind.insert(left.get_ith_mer(0,ind.get_k()-1),new_id,0);//insert first (k-1)-mer into index
+    ind.insert(right.get_ith_mer(0,ind.get_k()-1),new_id,0);//insert first (k-1)-mer into index
     ind.update_unitig(right,new_id,id,1,right.unitig_length()-k+1,true);//update the id and position of all other (k-1)-mers
     graph_unitigs[new_id]=right;//insert the right portion into the data struction
     auto end=std::chrono::steady_clock::now();

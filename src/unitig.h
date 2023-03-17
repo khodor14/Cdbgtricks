@@ -20,7 +20,7 @@ private:
 public:
     //create it from a string, here the left unused  bits is 0
     Unitig()= default;
-    explicit Unitig(std::string_view unitig);
+    Unitig(std::string_view unitig);
     //create it from 
     Unitig(uint8_t left_unused,uint8_t right_unused, std::vector<uint8_t> encoding);
     bool operator==(const Unitig& other) const;
