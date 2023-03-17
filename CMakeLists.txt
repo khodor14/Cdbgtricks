@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.14.0)
+add_compile_options(-O3)
+add_compile_options(-march=native)
+add_compile_options(-funroll-loops)
 project(ccdbgupdater VERSION 0.1.0)
 set(CONTACT "khodor.hannoush@inria.fr")
 
