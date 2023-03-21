@@ -47,18 +47,6 @@ size_t baseToInt(char base){
         break;
     }
 }
-// from https://naml.us/post/inverse-of-a-hash-function/
-uint64_t hash(uint64_t key) {
-  key = (~key) + (key << 21); // key = (key << 21) - key - 1;
-  key = key ^ (key >> 24);
-  key = (key + (key << 3)) + (key << 8); // key * 265
-  key = key ^ (key >> 14);
-  key = (key + (key << 2)) + (key << 4); // key * 21
-  key = key ^ (key >> 28);
-  key = key + (key << 31);
-  return key;
-}
-
 uint64_t hash(std::string kmer){
     /*
     convert kmer to 64 bits
@@ -215,13 +203,25 @@ std::string bits_to_seq_4(uint8_t encoding,int length){
 uint64_t reverse_complement(const uint64_t kmer,const int k){
     /*
         find reverse complement using the array rev_comp
+        Inspired from kmtricks implementation, changing the operand used for XOR just to adapt for {A,C,G,T} order
     */
+   /*
     uint64_t res=kmer;
     res=(res&0x00ffffffffffff00)|rev_comp[res>>56]|(((uint64_t)rev_comp[res&0x00000000000000ff])<<56);//reversing left most 4-mer and right most 4-mer
     res=(res&0xff00ffffffff00ff)|(((uint64_t)rev_comp[(res>>48)&0x00000000000000ff])<<8)|(((uint64_t)rev_comp[(res&0x000000000000ff00)>>8])<<48);//second left most 4-mer and second last most 4-mer
     res=(res&0xffff00ffff00ffff)|(((uint64_t)rev_comp[(res>>40)&0x00000000000000ff])<<16)|(((uint64_t)rev_comp[(res&0x0000000000ff0000)>>16])<<40);//same 
     res=(res&0xffffff0000ffffff)|(((uint64_t)rev_comp[(res>>32)&0x00000000000000ff])<<24)|(((uint64_t)rev_comp[(res&0x00000000ff000000)>>24])<<32);//reversing the 8-mer in the middle
     return res>>(64-2*k);//shift to encode only k-mer
+    */
+    uint64_t res = kmer;
+    res = ((res>> 2 & 0x3333333333333333) | (res & 0x3333333333333333) <<  2);
+    res = ((res>> 4 & 0x0F0F0F0F0F0F0F0F) | (res & 0x0F0F0F0F0F0F0F0F) <<  4);
+    res = ((res>> 8 & 0x00FF00FF00FF00FF) | (res & 0x00FF00FF00FF00FF) <<  8);
+    res = ((res>>16 & 0x0000FFFF0000FFFF) | (res & 0x0000FFFF0000FFFF) << 16);
+    res = ((res>>32 & 0x00000000FFFFFFFF) | (res & 0x00000000FFFFFFFF) << 32);
+    res = res ^ 0xffffffffffffffff;
+    res= (res >> (2*(32-k)));
+    return res;
 }
 uint64_t canonical_bits(const uint64_t kmer,const int k){
     uint64_t rev=reverse_complement(kmer,k);//reverse complement
