@@ -198,9 +198,9 @@ void split(std::unordered_map<int,Unitig> &graph_unitigs,Index &ind,int id,int p
     Unitig original_unitig=graph_unitigs[id];//.at(id);
     *num_split=*num_split+1;
     std::vector<uint8_t> encoding=original_unitig.get_encoding();//creating temp copy of the vector
-    Unitig left=Unitig(original_unitig.get_left_unused(),2*(3-(position+ind.get_k()-2+(int)(original_unitig.get_left_unused()>>1))%4),std::vector<uint8_t>(encoding.begin(),encoding.begin()+1+static_cast<int>(std::floor((position +ind.get_k()-2+ (int)(original_unitig.get_left_unused()>>1))/4))));
+    Unitig left=Unitig(original_unitig.get_left_unused(),3-(position+ind.get_k()-2+(int)(original_unitig.get_left_unused()))%4,std::vector<uint8_t>(encoding.begin(),encoding.begin()+1+static_cast<int>(std::floor((position +ind.get_k()-2+ (int)(original_unitig.get_left_unused()))/4))));
     //original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
-    Unitig right=Unitig(2*((position+(int)(original_unitig.get_left_unused()>>1))%4),original_unitig.get_right_unused(),std::vector<uint8_t>(encoding.begin()+static_cast<int>(std::floor((position + (int)(original_unitig.get_left_unused()>>1))/4)),encoding.end()));//take the right from position till the end
+    Unitig right=Unitig((position+(int)(original_unitig.get_left_unused()))%4,original_unitig.get_right_unused(),std::vector<uint8_t>(encoding.begin()+static_cast<int>(std::floor((position + (int)(original_unitig.get_left_unused()))/4)),encoding.end()));//take the right from position till the end
     graph_unitigs[id]=left;//keep the id but change the unitig
     /*
     To update the index properly

@@ -8,8 +8,7 @@ class Unitig
 {
 private:
     /* data */
-    uint8_t left_unused_bits;//the leftmost unused bits in the first bit encoding element of the vector
-    uint8_t right_unused_bits;//the righmost unsed bits in the first bit encoding
+    uint8_t unused;//left and write 0000|left|right (left,right={0,1,2,3}=={00,01,10,11})
     /*
     storing every 4 bases in uint8_t (8 bits)
     */
