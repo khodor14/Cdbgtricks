@@ -1,11 +1,17 @@
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/utility.hpp>
 #include "index_kmer.h"
 #include "CommonUtils.h"
+#include <unordered_map>
 #include <algorithm>
 #include <cstring>
 #include <vector>
 #include <string>
 #include <tuple>
-#include <sparsehash/sparse_hash_map>
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -19,6 +25,7 @@ int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
+   //index_table.set_empty_key(NULL);
    for (std::pair<int, Unitig> node : graph.get_nodes()){
         int id=node.first;
         int i;
@@ -130,21 +137,15 @@ void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting
         update_k_1_mer(i_th_mer,previous_id,current_id,position,keep_orient);
     }
 }
-/*
-loading the index from disk
-*/
-void Index::deserialize(const std::string filename){
-    FileSerializer deserialiser;
-    FILE *input = fopen(filename.c_str(), "rb");
-    index_table.unserialize(deserialiser,input);
-    fclose(input);
-}
-/*
-saving the index to disk
-*/
 void Index::serialize(const std::string filename){
-    FileSerializer serialiser;
-    FILE *out = fopen(filename.c_str(), "wb");
-    index_table.serialize(serialiser,out);
-    fclose(out);
+  std::ofstream ofs(filename, std::ios::binary);
+  boost::archive::binary_oarchive oa(ofs);
+  oa << index_table;
+  ofs.close();
+}
+void Index::deserialize(const std::string filename){
+  std::ifstream ifs(filename, std::ios::binary);
+  boost::archive::binary_iarchive ia(ifs);
+  ia >> index_table;
+  ifs.close();
 }

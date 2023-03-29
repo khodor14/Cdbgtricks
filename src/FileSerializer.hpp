@@ -1,32 +1,13 @@
-#include <cstdio>
-class FileSerializer 
+#include <tuple>
+#include <boost/serialization/serialization.hpp>
+namespace boost {
+namespace serialization {
+template<class Archive, typename... Args>
+void serialize(Archive & ar, std::tuple<Args...> & t, const unsigned int version)
 {
-public:
-    // serialize basic types to FILE
-    // -----------------------------
-    
-    template <class T>
-    bool operator()(FILE *fp, const T& value) 
-    {
-        return fwrite((const void *)&value, sizeof(value), 1, fp) == 1;
-    }
-
-    template <class T>
-    bool operator()(FILE *fp, T* value) 
-    {
-        return fread((void *)value, sizeof(*value), 1, fp) == 1;
-    }
-    // serialize std::pair<const A, B> to FILE - needed for maps
-    // ---------------------------------------------------------
-    template <class A, class B>
-    bool operator()(FILE *fp, const std::pair<const A, B>& value)
-    {
-        return (*this)(fp, value.first) && (*this)(fp, value.second);
-    }
-
-    template <class A, class B>
-    bool operator()(FILE *fp, std::pair<const A, B> *value) 
-    {
-        return (*this)(fp, (A *)&value->first) && (*this)(fp, &value->second);
-    }
-};
+    ar & std::get<0>(t);
+    ar & std::get<1>(t);
+    ar & std::get<2>(t);
+}
+}
+}
