@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <sstream>
 #include "CommonUtils.h"
-<<<<<<< HEAD
-=======
 #include <cassert>
 const char bToN[]={'A','C','G','T'};
 const char revN[]={'T','G','C','A'};
@@ -30,7 +28,6 @@ const uint8_t rev_comp[256] = {0xff,0xbf,0x7f,0x3f,0xef,0xaf,0x6f,0x2f,0xdf,0x9f
                                0x24,0xd4,0x94,0x54,0x14,0xc4,0x84,0x44,0x04,0xf0,0xb0,0x70,0x30,0xe0,0xa0,0x60,0x20,0xd0,0x90,0x50,0x10,
                                0xc0,0x80,0x40,0x00};
 const uint8_t revB[]={3,2,1,0};
->>>>>>> bit_coding
 size_t baseToInt(char base){
     switch (base)
     {
@@ -97,11 +94,7 @@ void createHashTable(std::ifstream& kmers,std::vector<uint64_t> & hashes){
         hashes.push_back(hash(next_kmer));
     }
 }
-<<<<<<< HEAD
-std::unordered_map<std::string,bool> createHashTable(std::string file_name){
-=======
 std::unordered_map<uint64_t,bool> createHashTable(std::string file_name){
->>>>>>> bit_coding
     /*
     input is a file name of kmers, the output of kmtricks pipeline
     output is a hash table kmers->boolean
@@ -110,11 +103,7 @@ std::unordered_map<uint64_t,bool> createHashTable(std::string file_name){
     */
     std::ifstream file{file_name, std::ios::in};
     std::string line;
-<<<<<<< HEAD
-    std::unordered_map<std::string,bool> result;// we store here out kmers
-=======
     std::unordered_map<uint64_t,bool> result;// we store here out kmers
->>>>>>> bit_coding
     while(getline(file,line)){
         //getline(kmers,line);
         std::stringstream sstr {line};
@@ -127,11 +116,7 @@ std::unordered_map<uint64_t,bool> createHashTable(std::string file_name){
     }
     return result;
 }
-<<<<<<< HEAD
-void write_unitigs_to_fasta(std::unordered_map<int,std::string> unitigs,std::string filename){
-=======
 void write_unitigs_to_fasta(std::unordered_map<int,Unitig> unitigs,std::string filename){
->>>>>>> bit_coding
     /*
     This function takes the vector of unitigs as input
     It writes this unitigs to a fasta file
