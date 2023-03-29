@@ -1,59 +1,21 @@
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/utility.hpp>
 #include "index_kmer.h"
 #include "CommonUtils.h"
+#include <unordered_map>
 #include <algorithm>
 #include <cstring>
 #include <vector>
 #include <string>
 #include <tuple>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <sparsehash/sparse_hash_map>
-#include <sparsehash/dense_hash_map>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/split_member.hpp>
-#include <boost/serialization/string.hpp>
-#include <unordered_map>
-namespace boost {
-namespace serialization {
-template<class Archive, typename... Args>
-void serialize(Archive & ar, std::tuple<Args...> & t, const unsigned int version)
-{
-    ar & std::get<0>(t);
-    ar & std::get<1>(t);
-    ar & std::get<2>(t);
-}
-template<class Archive, typename Key, typename T>
-void save(Archive& ar, const google::dense_hash_map<Key, T>& map,
-          const unsigned int version)
-{
-    std::vector<std::pair<Key, T>> vec(map.begin(), map.end());
-    ar & vec;
-}
-
-template<class Archive, typename Key, typename T>
-void load(Archive& ar, google::dense_hash_map<Key, T>& map,
-          const unsigned int version)
-{
-    std::vector<std::pair<Key, T>> vec;
-    ar & vec;
-    map.set_empty_key(Key()); // set the empty key
-    //map.set_deleted_key(Key()); // set the deleted key
-    for (const auto& pair : vec) {
-        map[pair.first] = pair.second;
-    }
-}
-
-template<class Archive, typename Key, typename T>
-void serialize(Archive& ar, google::dense_hash_map<Key, T>& map,
-               const unsigned int version)
-{
-    split_free(ar, map, version);
-}
-}
-}
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include "FileSerializer.hpp"
 Index::Index(int k_size){
     k=k_size;
 }
@@ -61,36 +23,46 @@ int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
-    std::unordered_map<int,std::string> nodes=graph.get_nodes();
-    index_table.set_empty_key("");
-   for (std::pair<int, std::string> node : nodes){
+   //index_table.set_empty_key(NULL);
+   for (std::pair<int, Unitig> node : graph.get_nodes()){
         int id=node.first;
-        std::string unitig=node.second;
-        int i=0;
-        for(i=0;i<=unitig.length()-k+1;++i){
-            std::string sub=unitig.substr(i,k-1);
-            std::string toStore=getCanonical(sub);
-            bool orientation=isCanonical(sub);
-            if(index_table.count(toStore)==0){
-                    std::vector<std::tuple<int,int,bool>> data;
-                    data.push_back(std::tuple<int,int,bool>(id,i,orientation));
-                    index_table[toStore]=data;
+        int i;
+        uint64_t i_th_mer=node.second.get_ith_mer(0,k-1);
+        std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(i_th_mer,k-1);
+        if(index_table.count(std::get<0>(seq_data))==0){
+            std::vector<std::tuple<int,int,bool>> data;
+            data.push_back(std::tuple<int,int,bool>(node.first,0,std::get<0>(seq_data)));
+            index_table[std::get<0>(seq_data)]=data;
+        }
+        else{
+            std::vector<std::tuple<int,int,bool>> data=index_table[std::get<0>(seq_data)];
+            data.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+            index_table[std::get<0>(seq_data)]=data;
+        }
+        for(i=1;i<=node.second.unitig_length()-k+1;++i){
+            i_th_mer=node.second.get_next_mer(i_th_mer,i,k-1);
+            seq_data=reverseComplementCanonical(i_th_mer,k-1);
+            if(index_table.count(std::get<0>(seq_data))==0){
+                    std::vector<std::tuple<int,int,bool>> data_i;
+                    data_i.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+                    index_table[std::get<0>(seq_data)]=data_i;
             }
             else{
-                std::vector<std::tuple<int,int,bool>> data=index_table[toStore];
-                data.push_back(std::tuple<int,int,bool>(id,i,orientation));
-                index_table[toStore]=data;
+                std::vector<std::tuple<int,int,bool>> data_i=index_table[std::get<0>(seq_data)];
+                data_i.push_back(std::tuple<int,int,bool>(id,i,std::get<1>(seq_data)));
+                index_table[std::get<0>(seq_data)]=data_i;
             }
         }
 	}
 }
-std::vector<std::tuple<int,int,bool>> Index::find(std::string kmer){
-    if(index_table.count(getCanonical(kmer))==0){
+std::vector<std::tuple<int,int,bool>> Index::find(uint64_t kmer){
+    uint64_t canonical_kmer=canonical_bits(kmer,k-1);
+    if(index_table.count(canonical_kmer)==0){
         return std::vector<std::tuple<int,int,bool>>();
     }
-    return index_table[getCanonical(kmer)];
+    return index_table[canonical_kmer];
 }
-void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int position){
+void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int position,bool keep_orient){
     /*
         the input are: a string of size (k-1)
         the previous id where this string occurs
@@ -98,18 +70,24 @@ void Index::update_k_1_mer(std::string k_1_mer,int prev_id,int current_id,int po
         the new position where it occurs
     */
     std::vector<std::tuple<int,int,bool>> data=find(k_1_mer);//get the occurences of the string from the index
-
+    //std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
     //go over the occurences
     for (int i=0;i<data.size();i++){
         //which occurens has the previous id, the old occurence
         if(std::get<0>(data[i])==prev_id){
-            data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
+            if(keep_orient){
+                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
+            }
+            else{
+                std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
+                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<1>(kmer_data));//update the values 
+            }
             break;//break since the (k-1)-mer occurs once in a unitig except for palindromic k-mers
         }
     }
-    index_table[getCanonical(k_1_mer)]=data;
+    index_table[canonical_bits(k_1_mer,k-1)]=data;
 }
-void Index::insert(std::string k_1_mer,int id,int position){
+void Index::insert(uint64_t k_1_mer,int id,int position){
     /*
         the input is a string of size (k-1)
         the id of the unitig where this string occurs
@@ -118,13 +96,12 @@ void Index::insert(std::string k_1_mer,int id,int position){
         The k-1-mer gets inserted into the index
     */
    std::vector<std::tuple<int,int,bool>> occurences=find(k_1_mer);//get previous occurences
-
-   bool orientation=isCanonical(k_1_mer);//find the orientation
-   occurences.push_back(std::tuple<int,int,bool>(id,position,orientation));//insert the new occurence into vector
-   index_table[getCanonical(k_1_mer)]=occurences;
+   std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
+   occurences.push_back(std::tuple<int,int,bool>(id,position,std::get<1>(kmer_data)));//insert the new occurence into vector
+   index_table[std::get<0>(kmer_data)]=occurences;
 
 }
-void Index::insertSubUnitig(std::string unitig,int id,int starting_position,int ending_position){
+void Index::insertSubUnitig(Unitig unitig,int id,int starting_position,int ending_position){
     /*
         the inputs are:
                      a string unitig
@@ -133,12 +110,15 @@ void Index::insertSubUnitig(std::string unitig,int id,int starting_position,int 
                      the ending position (int)
         Actions performed: all the (k-1)-mers occuring between starting_position and ending position gets inserted
     */
-   for(int position=starting_position;position<=ending_position;position++){
+   uint64_t i_th_mer=unitig.get_ith_mer(starting_position,k-1);
+   insert(i_th_mer,id,starting_position);
+   for(int position=starting_position+1;position<=ending_position;position++){
         //call the function insert to insert the (k-1)-mer at position i
-        insert(unitig.substr(position,k-1),id,position);
+        i_th_mer=unitig.get_next_mer(i_th_mer,position,k-1);
+        insert(i_th_mer,id,position);
    }
 }
-void Index::update_unitig(std::string seq,int current_id,int previous_id,int starting_position,int ending_position){
+void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting_position,int ending_position,bool keep_orient){
     /*
         the inputs are:
                      a string unitig
@@ -148,8 +128,11 @@ void Index::update_unitig(std::string seq,int current_id,int previous_id,int sta
                      the ending position (int)
         Actions performed: the info all the (k-1)-mers occuring between starting_position and ending position get updated
     */
-    for(int position=starting_position;position<=ending_position;position++){
-        update_k_1_mer(seq.substr(position,k-1),previous_id,current_id,position);
+    uint64_t i_th_mer=seq.get_ith_mer(starting_position,k-1);
+    update_k_1_mer(i_th_mer,previous_id,current_id,starting_position,keep_orient);
+    for(int position=starting_position+1;position<=ending_position;position++){
+        i_th_mer=seq.get_next_mer(i_th_mer,position,k-1);
+        update_k_1_mer(i_th_mer,previous_id,current_id,position,keep_orient);
     }
 }
 void Index::serialize(const std::string filename){
