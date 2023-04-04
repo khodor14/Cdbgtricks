@@ -28,6 +28,7 @@ void show_usage(){
             <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
             <<"\t"<<"--update_index[-u]"<<" index the constructed funitigs\n"
             <<"\t"<<"--load_index[-li]"<<" the path to the saved index\n"
+            <<"\t"<<"--output_index[-oi]"<<" write the index to a binary file\n"
             <<"\t"<<"-v"<<" verbosity\n" 
             ;
 }
@@ -44,6 +45,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     arguments["verbosity"]=std::tuple<bool,std::string>(false,"");
     arguments["updateindex"]=std::tuple<bool,std::string>(false,"");
     arguments["loadindex"]=std::tuple<bool,std::string>(false,"");
+    arguments["outputindex"]=std::tuple<bool,std::string>(false,"");
     if(argc<2){
         show_usage();
         exit(0);
@@ -63,6 +65,10 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
         else if(!strcmp(argv[i],"-v"))
         {
             arguments["verbosity"]=std::tuple<bool,std::string>(true,"");
+        }
+        else if(!strcmp(argv[i],"-oi")||!strcmp(argv[i],"--output_index"))
+        {
+            arguments["outputindex"]=std::tuple<bool,std::string>(true,"");
         }
         else if (!strcmp(argv[i],"-o")||!strcmp(argv[i],"--output_file_name"))
         {
@@ -189,7 +195,7 @@ int main(int argc,char **argv){
         //call kmtricks
         std::system("chmod +x ../src/utils.sh");
         auto start=std::chrono::steady_clock::now();
-        std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" absent_kmers.txt").c_str());
+        std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputfilename"])+".txt").c_str());
         auto end =std::chrono::steady_clock::now();
         time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         //load the kmers
@@ -242,6 +248,8 @@ int main(int argc,char **argv){
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<std::endl;
     //if we are testing with an already augmented graph
     //if the output file name prefix is passed as argument
-    ind.serialize(std::get<1>(arguments["outputfilename"])+".bin");
+    if(std::get<0>(arguments["outputindex"])){
+        ind.serialize(std::get<1>(arguments["outputfilename"])+".bin");
+    }
     write_unitigs_to_fasta(merged,std::get<1>(arguments["outputfilename"])+".fa");
 }

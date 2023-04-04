@@ -17,8 +17,15 @@ private:
     using a tuple to store the index <unitig id,position,orientation> of each (k-1)-mer
 
     */
+   /*
+    mask to get orientation: &1
+    mask to get position: (>>1)&0x7FFFFFFF
+    mask to get identity: >>32
+   */
+    std::unordered_map<uint64_t, uint64_t> kmer_occurences[8];//eight tables where table i contains the ith occurence of the kmer
     std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_table;
-
+    size_t find_which_table(const uint64_t kmer);
+    size_t find_where_update(const uint64_t kmer,int id);
     //std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;
     
 public:
@@ -42,6 +49,8 @@ public:
     void update_unitig(Unitig seq,int id,int previous_id,int starting_position,int ending_position,bool keep_orient);
     void serialize(const std::string filename);
     void deserialize(const std::string filename);
+    size_t how_many(const uint64_t k_1_mer);
+    uint64_t find_data(uint64_t k_1_mer);
     ~Index()=default;
 };
 #endif // !index_kmer_H
