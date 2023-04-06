@@ -25,7 +25,7 @@ Installing kmtricks: First Install kmtricks [version v1.2.1]
 * From [Bioconda](https://bioconda.github.io):
 
   ```
-  conda install -c conda-forge -c tlemane kmtricks
+  conda install -c conda-forge -c tlemane kmtricks (latest version)
   ```
 Installing ccdbupdater: Currently we have only the source version
 * From source
@@ -50,8 +50,6 @@ Usage:
 OR
 ./ccdbgupdater --input_graph <value> --k_mer_file <value> --k_mer_size <value>
 
-
-
 Options:
 	-h[--help]	 prints this help message
 	--input_graph	 the path to the pangenome graph in gfa or fasta format
@@ -68,8 +66,9 @@ Options:
 	--output_file_name[-o] the name of the output file
 	--update_index[-u] index the constructed funitigs
 	--load_index[-li] the path to the saved index
+	--output_index[-oi] write the index to a binary file
 	-v verbosity
-```
+
 
 ### Examples
   1. **Update a compacted de bruijn graph from a kmer file**
