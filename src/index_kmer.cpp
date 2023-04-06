@@ -38,16 +38,6 @@ void Index::create(GfaGraph& graph){
             kmer_occurences[find_which_table(std::get<0>(seq_data))][std::get<0>(seq_data)]=position;
        }
     }
-    for(size_t j=0;j<8;j++){
-        std::cout<<"Size of table "<<j+1<<" is "<<kmer_occurences[j].size()<<std::endl;
-    }
-}
-std::vector<std::tuple<int,int,bool>> Index::find(uint64_t kmer){
-    uint64_t canonical_kmer=canonical_bits(kmer,k-1);
-    if(index_table.count(canonical_kmer)==0){
-        return std::vector<std::tuple<int,int,bool>>();
-    }
-    return index_table[canonical_kmer];
 }
 void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int position,bool keep_orient){
     /*
@@ -56,23 +46,10 @@ void Index::update_k_1_mer(uint64_t k_1_mer,int prev_id,int current_id,int posit
         the current id where it occurs after the updte performed
         the new position where it occurs
     */
-    std::vector<std::tuple<int,int,bool>> data=find(k_1_mer);//get the occurences of the string from the index
-    //std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
-    //go over the occurences
-    for (int i=0;i<data.size();i++){
-        //which occurens has the previous id, the old occurence
-        if(std::get<0>(data[i])==prev_id){
-            if(keep_orient){
-                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<2>(data[i]));//update the values 
-            }
-            else{
-                std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
-                data[i]=std::tuple<int,int,bool>(current_id,position,std::get<1>(kmer_data));//update the values 
-            }
-            break;//break since the (k-1)-mer occurs once in a unitig except for palindromic k-mers
-        }
-    }
-    index_table[canonical_bits(k_1_mer,k-1)]=data;
+   std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
+   uint64_t kmer_data_bits=(uint64_t)current_id;
+   kmer_data_bits=(kmer_data_bits<<32)|(position<<1)|std::get<1>(kmer_data);
+   kmer_occurences[find_where_update(std::get<0>(kmer_data),prev_id)][std::get<0>(kmer_data)]=kmer_data_bits;//find where to update and update it
 }
 void Index::insert(uint64_t k_1_mer,int id,int position){
     /*
@@ -82,10 +59,10 @@ void Index::insert(uint64_t k_1_mer,int id,int position){
 
         The k-1-mer gets inserted into the index
     */
-   std::vector<std::tuple<int,int,bool>> occurences=find(k_1_mer);//get previous occurences
    std::tuple<uint64_t,bool> kmer_data=reverseComplementCanonical(k_1_mer,k-1);
-   occurences.push_back(std::tuple<int,int,bool>(id,position,std::get<1>(kmer_data)));//insert the new occurence into vector
-   index_table[std::get<0>(kmer_data)]=occurences;
+   uint64_t kmer_data_bits=(uint64_t)id;
+   kmer_data_bits=(kmer_data_bits<<32)|(position<<1)|std::get<1>(kmer_data);
+   kmer_occurences[find_which_table(std::get<0>(kmer_data))][std::get<0>(kmer_data)]=kmer_data_bits;//find where to insert and insert it
 
 }
 void Index::insertSubUnitig(Unitig unitig,int id,int starting_position,int ending_position){
@@ -159,12 +136,16 @@ size_t Index::how_many(uint64_t k_1_mer){
     */
     return find_which_table(canonical_bits(k_1_mer,k-1));
 }
-uint64_t Index::find_data(uint64_t k_1_mer){
+uint64_t Index::find_data(uint64_t k_1_mer,size_t i){
     /*
     This is useful for split and join
     in such a case the (k-1)-mer exist only once so it's in the
     */
-    return kmer_occurences[0][canonical_bits(k_1_mer,k-1)];
+   uint64_t canonical_kmer=canonical_bits(k_1_mer,k-1);
+    if(kmer_occurences[i].count(canonical_kmer)==0){
+        return 0;
+    }
+    return kmer_occurences[i].at(canonical_kmer);
 }
 size_t Index::find_where_update(uint64_t kmer,int id){
     /*
@@ -172,8 +153,10 @@ size_t Index::find_where_update(uint64_t kmer,int id){
     it finds where the update should occur
     */
     size_t where=0;
-    while(where!=7){
-        if((int)(kmer_occurences[where][kmer]>>32)==id){
+    while(where<8){
+        uint64_t data=find_data(kmer,where);
+        data=data>>32;
+        if(data==id){
             return where;
         }
         where++;
