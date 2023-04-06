@@ -68,8 +68,7 @@ Options:
 	--load_index[-li] the path to the saved index
 	--output_index[-oi] write the index to a binary file
 	-v verbosity
-
-
+```
 ### Examples
   1. **Update a compacted de bruijn graph from a kmer file**
      ```
