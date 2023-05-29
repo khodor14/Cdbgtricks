@@ -3,7 +3,10 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include "unitig.h"
+#include "FileSerializer.hpp"
 #ifndef ParseGFA_H
 #define ParseGFA_H
 
@@ -45,7 +48,7 @@ private:
 public:
     GfaGraph() = default;
     static GfaGraph LoadFromFile(std::string filename);
-    static GfaGraph LoadFromStream(std::ifstream & file,bool gfa);
+    static GfaGraph LoadFromStream(std::string file,bool gfa);
     void convertToFasta(std::string filename);
     std::vector<int> find_in_neighbors(int node_id);
     std::vector<int> find_out_neighbors(int node_id);
@@ -53,6 +56,11 @@ public:
     void fixe_edges(int node_id,int new_node, bool from, bool to);
     int get_max_node_id();
     void set_max_node_id(int id);
+    void delete_unitig(int id);
+    void insert_unitig(int id,Unitig u);
+    Unitig get_unitig(int id);
+    void serialize(const std::string filename);
+    void deserialize(const std::string filename);
     ~GfaGraph() = default;
 };
 

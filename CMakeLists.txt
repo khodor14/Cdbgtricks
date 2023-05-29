@@ -10,7 +10,7 @@ set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h)
 
 #adding the directory
 #add_subdirectory(src)
@@ -26,6 +26,17 @@ target_link_directories(${PROJECT_NAME}
     PRIVATE external/sparsehash
     PRIVATE external/boost
 )
+find_package(ZLIB REQUIRED)
+target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
 
-#linking to libraries
+if (ZLIB_FOUND)
+    include_directories(${ZLIB_INCLUDE_DIRS})
+else()
+    message(FATAL_ERROR "zlib not found. Required for to output files")
+endif(ZLIB_FOUND)
 target_link_libraries(${PROJECT_NAME} boost_serialization)
+find_package(Boost REQUIRED COMPONENTS serialization)
+add_library(boost::serialization INTERFACE IMPORTED)
+set_target_properties(boost::serialization PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+    INTERFACE_LINK_LIBRARIES "${Boost_SERIALIZATION_LIBRARIES}")

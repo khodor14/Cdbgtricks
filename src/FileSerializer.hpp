@@ -1,5 +1,9 @@
 #include <tuple>
 #include <boost/serialization/serialization.hpp>
+#include <unordered_map>
+#include "unitig.h"
+#ifndef FileSerializer_H
+#define FileSerializer_H
 namespace boost {
 namespace serialization {
 template<class Archive, typename... Args>
@@ -11,3 +15,4 @@ void serialize(Archive & ar, std::tuple<Args...> & t, const unsigned int version
 }
 }
 }
+#endif

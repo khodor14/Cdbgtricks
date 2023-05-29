@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/archive/basic_archive.hpp>
 class Unitig
 {
 private:
@@ -13,9 +16,14 @@ private:
     storing every 4 bases in uint8_t (8 bits)
     */
     std::vector<uint8_t> unitig_encoding;
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & unused;
+        ar & unitig_encoding;
+    }
 
     //std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;
-    
 public:
     //create it from a string, here the left unused  bits is 0
     Unitig()= default;

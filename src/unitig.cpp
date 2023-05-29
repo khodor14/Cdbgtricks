@@ -44,12 +44,31 @@ std::string Unitig::to_string(){
     useful to output the graph
     special care for the first and last encoding as they contain unused characters
     */
-   std::string unitig=bits_to_seq_4(unitig_encoding[0],4).substr(get_left_unused());//take the first characters
-   for(size_t i=1;i<unitig_encoding.size()-1;i++){
-    unitig=unitig+bits_to_seq_4(unitig_encoding[i],4);//take 4 characters at time and append
+   char seq[unitig_length()+1];
+   int i=0,k;
+   std::string first_part=bits_to_seq_4(unitig_encoding[0],4).substr(get_left_unused());
+   for(k=0;i<first_part.length();k++){
+    seq[i]=first_part[k];
+    i++;
    }
-   unitig=unitig+bits_to_seq_4(unitig_encoding[unitig_encoding.size()-1],4).substr(0,4-(int)get_right_unused());//add the last
-   return unitig;
+   //std::string unitig=bits_to_seq_4(unitig_encoding[0],4).substr(get_left_unused());//take the first characters
+   for(size_t j=1;j<unitig_encoding.size()-1;j++){
+    first_part=bits_to_seq_4(unitig_encoding[j],4);
+    for(k=0;k<first_part.length();k++){
+        seq[i]=first_part[k];
+        i++;
+    }
+    //i++;
+    //unitig=unitig+bits_to_seq_4(unitig_encoding[i],4);//take 4 characters at time and append
+   }
+   first_part=bits_to_seq_4(unitig_encoding[unitig_encoding.size()-1],4).substr(0,4-(int)get_right_unused());
+   for(k=0;k<first_part.length();k++){
+        seq[i]=first_part[k];
+        i++;
+    }
+    seq[unitig_length()]='\0';
+   //unitig=unitig+bits_to_seq_4(unitig_encoding[unitig_encoding.size()-1],4).substr(0,4-(int)get_right_unused());//add the last
+   return seq;
 }
 bool Unitig::operator==(const Unitig& other) const {
     // Check if member variables are equal
@@ -68,6 +87,7 @@ uint64_t Unitig::get_ith_mer(const int i,const int k){
    int pos_letter_in_bits=(i+(int)get_left_unused())%4;//the position of ith letter in the bit encoding
    uint64_t answer=unitig_encoding[j]&(0xff>>(2*pos_letter_in_bits));//mask the left bits
    int letter_encoded=4-pos_letter_in_bits;
+   
    while(letter_encoded+4<=k && j<unitig_encoding.size()){
     j=j+1;
     answer=(answer<<8)|unitig_encoding[j];
