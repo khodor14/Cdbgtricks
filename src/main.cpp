@@ -21,7 +21,7 @@ void show_usage(){
             <<"[COMMAND]:\n"
             <<"\tupdate \t\t update a compacted de Bruijn graph by a new genome\n"
             <<"\tindex \t\t index a compacted de Bruijn graph by (k-1)-mers\n"
-            <<"\tconvert \t\t convert a graph from GFA/FASTA/binary to binary/Fasta\\n"
+            <<"\tconvert \t\t convert a graph from GFA/FASTA/binary to binary/Fasta\n\n"
             
             <<"[PARAMETERS]: update\n\n"
             <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
@@ -262,7 +262,6 @@ int main(int argc,char **argv){
         Index ind=Index(stoi(std::get<1>(arguments["kvalue"])));//
         if(std::get<0>(arguments["inputtext"])){
             GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
-            g2.serialize(std::get<1>(arguments["outputfilename"])+".bin");
             ind.create(g2);
             ind.serialize(std::get<1>(arguments["outputfilename"])+"_index.bin");
         }
