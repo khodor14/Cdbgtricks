@@ -1,9 +1,4 @@
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/unordered_map.hpp>
-#include <boost/serialization/utility.hpp>
+#include <zstd.h>
 #include "index_kmer.h"
 #include "CommonUtils.h"
 #include <unordered_map>
@@ -100,18 +95,62 @@ void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting
     }
 }
 void Index::serialize(const std::string filename){
-  std::ofstream ofs(filename, std::ios::binary);
-  boost::archive::binary_oarchive oa(ofs);
-  //oa << index_table;
-  oa << kmer_occurences;
-  ofs.close();
+    std::vector<char> buffer;
+    std::ofstream outFile(filename, std::ios::binary);
+    for (const auto& vec : kmer_occurences) {
+        size_t vSize=vec.size();
+        outFile.write(reinterpret_cast<char*>(&vSize), sizeof(vSize));
+        const char* vecData = reinterpret_cast<const char*>(vec.values().data());
+        size_t vecSize = vec.size() * sizeof(std::pair<uint64_t, uint64_t>);
+        buffer.insert(buffer.end(), vecData, vecData + vecSize);
+    }
+    std::vector<char> compressedData(ZSTD_compressBound(buffer.size()));
+    size_t compressedSize = ZSTD_compress(compressedData.data(), compressedData.size(),
+                                          buffer.data(), buffer.size(), 1);
+    compressedData.resize(compressedSize);
+
+    // Write the compressed data to a file
+    
+    outFile.write(compressedData.data(), compressedData.size());
+    outFile.close();
 }
 void Index::deserialize(const std::string filename){
-  std::ifstream ifs(filename, std::ios::binary);
-  boost::archive::binary_iarchive ia(ifs);
-  //ia >> index_table;
-  ia >> kmer_occurences;
-  ifs.close();
+    // Read the compressed data from the file
+    std::ifstream inFile(filename, std::ios::binary);
+    size_t size[8];
+    for(int i=0;i<8;i++){
+        size_t vSize;
+        inFile.read(reinterpret_cast<char*>(&vSize), sizeof(vSize));
+        size[i]=vSize;
+
+    }
+    std::vector<char> compressedData((std::istreambuf_iterator<char>(inFile)),
+                                      std::istreambuf_iterator<char>());
+
+    // Decompress the compressed buffer using Zstd
+    std::vector<char> decompressedData(ZSTD_getFrameContentSize(compressedData.data(), compressedData.size()));
+    size_t decompressedSize = ZSTD_decompress(decompressedData.data(), decompressedData.size(),
+                                              compressedData.data(), compressedData.size());
+    decompressedData.resize(decompressedSize);
+
+    // Deserialize the buffer into an array of std::vector<std::pair<uint64_t, uint64_t>>
+    size_t offset = 0;
+    while (offset < decompressedSize) {
+        size_t vecSize = decompressedSize - offset;
+        const std::pair<uint64_t, uint64_t>* vecData = reinterpret_cast<const std::pair<uint64_t, uint64_t>*>(decompressedData.data() + offset);
+        size_t numPairs = vecSize / sizeof(std::pair<uint64_t, uint64_t>);
+
+        for(int i=0;i<8;i++){
+            kmer_occurences[i].reserve(size[i]);
+            for(int j=0;j<size[i];j++){
+                kmer_occurences[i][vecData->first]=vecData->second;
+                vecData++;
+            }
+        }
+        offset += vecSize;
+    }
+
+    inFile.close();
 }
 size_t Index::find_which_table(uint64_t kmer){
     /*

@@ -1,12 +1,10 @@
+#ifndef index_kmer_H
+#define index_kmer_H
 #include <string>
 #include "CommonUtils.h"
 #include "ParseGFA.h"
 #include <vector>
-#include <unordered_map>
-#include <sparsehash/dense_hash_map>
-#include <tuple>
-#ifndef index_kmer_H
-#define index_kmer_H
+#include <ankerl/unordered_dense.h>
 class Index
 {
 private:
@@ -22,7 +20,7 @@ private:
     mask to get position: (>>1)&0x7FFFFFFF
     mask to get identity: >>32
    */
-    std::unordered_map<uint64_t, uint64_t> kmer_occurences[8];//eight tables where table i contains the ith occurence of the kmer
+    ankerl::unordered_dense::map<uint64_t, uint64_t> kmer_occurences[8];//eight tables where table i contains the ith occurence of the kmer
     size_t find_which_table(const uint64_t kmer);//useful to insert in a table
     size_t find_where_update(const uint64_t kmer,int id);//where update should occur
     //std::unordered_map<std::string,std::vector<std::tuple<int,int,bool>>> index_table;

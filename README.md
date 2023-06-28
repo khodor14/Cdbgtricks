@@ -20,6 +20,7 @@ ccdbgUpdater is developed in C++11
 It relies on kmtricks to find the set of absent k-mers which are in the genome to be added but not in the graph
 
 * [Boost](https://www.boost.org/)
+*[ZSTD](https://anaconda.org/conda-forge/zstd)
 ## Installation
 Installing kmtricks: First Install kmtricks [version v1.2.1]
 * From [Bioconda](https://bioconda.github.io):
@@ -56,7 +57,9 @@ OR
 [COMMAND]:
 	update 		 update a compacted de Bruijn graph by a new genome
 	index 		 index a compacted de Bruijn graph by (k-1)-mers
-	convert 		 convert a graph from GFA/FASTA/binary to binary/Fasta\n[PARAMETERS]: update
+	convert 		 convert a graph from GFA/FASTA/binary to binary/Fasta
+
+[PARAMETERS]: update
 
 	-h[--help]	 prints this help message
 	--input_graph[-ig]	 the path to the pangenome graph in gfa or fasta format
