@@ -48,7 +48,6 @@ void GfaGraph::set_max_node_id(int id){
 	max_node_id=id;
 }
 GfaGraph GfaGraph::LoadFromFile(std::string filename){
-    std::ifstream file{filename, std::ios::in};
 	if(filename.length()>4 && !std::strcmp(filename.substr(filename.length()-3).c_str(),"gfa")){
 		return LoadFromStream(filename,true);
 	}
@@ -74,6 +73,7 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 			id++;
 			graph.unitigs[id]=Unitig(kseq->seq.s);
 		}
+		graph.set_max_node_id(id);
 		return graph;
 	}
 	std::unique_ptr<std::istream> graph_in=std::unique_ptr<std::istream>(new zstr::ifstream(filename, std::ios_base::in));
@@ -83,7 +83,7 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 	int max_id=0;
 	std::ofstream graphfile;
 	std::ostream graphf(0);
-	graphfile.open("unitigs_fasta.fa");
+	graphfile.open(filename);
 	graphf.rdbuf(graphfile.rdbuf());
 	std::string seq;
 	while (getline(gin, line).good())
