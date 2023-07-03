@@ -1,7 +1,6 @@
 #include <zstd.h>
 #include "index_kmer.h"
 #include "CommonUtils.h"
-#include <unordered_map>
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -10,7 +9,24 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
+#include <limits>
 #include "FileSerializer.hpp"
+template <typename T>
+class CustomAllocator {
+public:
+    using value_type = T;
+
+    T* allocate(std::size_t n) {
+        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::bad_alloc();
+        return static_cast<T*>(std::malloc(n * sizeof(T)));
+    }
+
+    void deallocate(T* p, std::size_t n) noexcept {
+        std::free(p);
+    }
+};
+using LargeVector = std::vector<char, CustomAllocator<char>>;
 Index::Index(int k_size){
     k=k_size;
 }
@@ -95,7 +111,7 @@ void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting
     }
 }
 void Index::serialize(const std::string filename){
-    std::vector<char> buffer;
+    /*std::vector<char> buffer;
     std::ofstream outFile(filename, std::ios::binary);
     for (const auto& vec : kmer_occurences) {
         size_t vSize=vec.size();
@@ -112,45 +128,54 @@ void Index::serialize(const std::string filename){
     // Write the compressed data to a file
     
     outFile.write(compressedData.data(), compressedData.size());
-    outFile.close();
+    outFile.close();*/
+        std::cout<<"Hoho\n";
+
 }
 void Index::deserialize(const std::string filename){
-    // Read the compressed data from the file
-    std::ifstream inFile(filename, std::ios::binary);
-    size_t size[8];
-    for(int i=0;i<8;i++){
-        size_t vSize;
-        inFile.read(reinterpret_cast<char*>(&vSize), sizeof(vSize));
-        size[i]=vSize;
+    /*std::ifstream inFile(filename, std::ios::binary);
 
+    // Read the sizes of each unordered_map from the input file
+    size_t size[8];
+    for (int i = 0; i < 8; i++) {
+        inFile.read(reinterpret_cast<char*>(&size[i]), sizeof(size[i]));
     }
-    std::vector<char> compressedData((std::istreambuf_iterator<char>(inFile)),
-                                      std::istreambuf_iterator<char>());
+
+    // Get the total size of the compressed data
+    inFile.seekg(0, std::ios::end);
+    std::streampos compressedSize = inFile.tellg() - (8 * sizeof(size[0]));
+    inFile.seekg(8 * sizeof(size[0]), std::ios::beg);
+
+    // Read the compressed data into a LargeVector
+    LargeVector compressedData(static_cast<size_t>(compressedSize));
+    inFile.read(compressedData.data(), compressedSize);
 
     // Decompress the compressed buffer using Zstd
-    std::vector<char> decompressedData(ZSTD_getFrameContentSize(compressedData.data(), compressedData.size()));
-    size_t decompressedSize = ZSTD_decompress(decompressedData.data(), decompressedData.size(),
-                                              compressedData.data(), compressedData.size());
-    decompressedData.resize(decompressedSize);
+    size_t decompressedSize = ZSTD_getFrameContentSize(compressedData.data(), compressedData.size());
+    LargeVector decompressedData(decompressedSize);
+    decompressedSize = ZSTD_decompress(decompressedData.data(), decompressedData.size(), compressedData.data(), compressedData.size());
 
-    // Deserialize the buffer into an array of std::vector<std::pair<uint64_t, uint64_t>>
+    // Deserialize the buffer into an array of std::unordered_map
     size_t offset = 0;
-    while (offset < decompressedSize) {
-        size_t vecSize = decompressedSize - offset;
-        const std::pair<uint64_t, uint64_t>* vecData = reinterpret_cast<const std::pair<uint64_t, uint64_t>*>(decompressedData.data() + offset);
-        size_t numPairs = vecSize / sizeof(std::pair<uint64_t, uint64_t>);
+    for (int i = 0; i < 8; i++) {
+        kmer_occurences[i].reserve(size[i]);
+        if (size[i] > 0) {
+            const std::pair<uint64_t, uint64_t>* mapData = reinterpret_cast<const std::pair<uint64_t, uint64_t>*>(decompressedData.data() + offset);
+            const std::pair<uint64_t, uint64_t>* mapDataEnd = mapData + size[i];
 
-        for(int i=0;i<8;i++){
-            kmer_occurences[i].reserve(size[i]);
-            for(int j=0;j<size[i];j++){
-                kmer_occurences[i][vecData->first]=vecData->second;
-                vecData++;
+            while (mapData != mapDataEnd) {
+                kmer_occurences[i].emplace(mapData->first, mapData->second);
+                mapData++;
             }
-        }
-        offset += vecSize;
-    }
 
-    inFile.close();
+            offset += size[i] * sizeof(std::pair<uint64_t, uint64_t>);
+        }
+    }
+    for(int i=0;i<8;i++){
+        std::cout<<kmer_occurences[i].size()<<std::endl;
+    }
+    inFile.close();*/
+    std::cout<<"Hoho\n";
 }
 size_t Index::find_which_table(uint64_t kmer){
     /*

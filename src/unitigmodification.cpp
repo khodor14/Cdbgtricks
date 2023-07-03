@@ -53,9 +53,11 @@ std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint6
 
    std::vector<char> possible_character_for_extension;
    std::string alphabet="ACTG";
+   uint64_t query;
    for(int i=0;i<alphabet.length();i++){
         //the canonical of mer+character from the alphabet is present
-        if(kmers_to_add_to_graph.find(canonical_bits(((mer<<2)&(0xffffffffffffffff>>(64-2*k)))|baseToInt(alphabet[i]),k))!=kmers_to_add_to_graph.end()){
+        query=canonical_bits(((mer<<2)&(0xffffffffffffffff>>(64-2*k)))|baseToInt(alphabet[i]),k);
+        if(kmers_to_add_to_graph.count(query)>0){//&& !kmers_to_add_to_graph[query]
             //add the corresponding character to the vector
             possible_character_for_extension.push_back(alphabet[i]);
         }
@@ -157,7 +159,8 @@ size_t decision(const uint64_t k_1_mer,const std::vector<std::tuple<int,int,bool
     find the decision of split or join based on occurences
     */
     size_t decision=0;
-    if(k_1_mer==0||index_graph.how_many(k_1_mer)==0){
+    size_t number_of_occurrences=index_graph.how_many(k_1_mer);
+    if(number_of_occurrences==0){
         return decision;//nothing should be done, the (k-1)-mer does not exist in the graph
     }
     uint64_t first_occurence_graph=index_graph.find_data(k_1_mer,0);//get the first occurence from the index
@@ -168,13 +171,14 @@ size_t decision(const uint64_t k_1_mer,const std::vector<std::tuple<int,int,bool
         decision=1;// then we split
     }
     //the (k-1)-mer exist once in the index of the graph and in the funitig index
-    else if ((position_unitig==0 || position_unitig==unitig.unitig_length()-k+1) && (index_graph.how_many(k_1_mer)==1 && occ_unitigs.size()==1))
+    else if ((position_unitig==0 || position_unitig==unitig.unitig_length()-k+1) && (number_of_occurrences==1 && occ_unitigs.size()==1))
     {
         decision=2;//we may join
     }
+
     return decision;
 }
-void split(GfaGraph& graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *num_split,float *time_split,bool verbose){
+void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *num_split,float *time_split,bool verbose){
     /*
     The input are:
                 the unitigs of the graph
@@ -246,19 +250,20 @@ void checkAndMerge(uint64_t occurence_graph,std::tuple<int,int,bool> occurence_u
                                                                         --------------------------------- unitig graph 2
         */
        int position2_u=abs(int(position_unitig-constructed_unitig.unitig_length()+index_graph.get_k()-1));//if its prefix then position1=0 and position2=|u|-k+1, if pos1=|u|-k+1 then pos2=0 so pos2=|pos1-|u|+k-1|
-       uint64_t occ_g=index_graph.find_data(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1),0);
+       uint64_t k_1_mer=constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1);
+       uint64_t occ_g=index_graph.find_data(k_1_mer,0);
        std::vector<std::tuple<int,int,bool>> occ_u;
        std::tuple<uint64_t,bool> data=reverseComplementCanonical(constructed_unitig.get_ith_mer(position2_u,index_graph.get_k()-1),index_graph.get_k()-1);
        if(unitig_index.count(std::get<0>(data))>0){
             occ_u=unitig_index[std::get<0>(data)];
        }
-       int dec=decision(occ_g,occ_u,index_graph,graph,index_graph.get_k());
+       int dec=decision(k_1_mer,occ_u,index_graph,graph,index_graph.get_k());
        if(dec==1){
         /*
         decision one means we need to split the unitig
         */
 
-        split(graph,index_graph,index_graph.get_k(),max_node_id,num_split,time_split,verbose);
+        split(graph,index_graph,occ_g,max_node_id,num_split,time_split,verbose);
        }
        else if (dec==2){
             /*
@@ -420,7 +425,7 @@ void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bo
         }
     }
    }
-    graph.set_max_node_id(*max_node_id);
+   graph.set_max_node_id(*max_node_id);
     auto end=std::chrono::steady_clock::now();
     *time_update=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
 }
