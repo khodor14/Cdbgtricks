@@ -17,10 +17,10 @@ ccdbgUpdater is developed in C++11
 * C++11 compiler:
     * [GCC](https://gcc.gnu.org/) >= 4.8.5
 
-It relies on kmtricks to find the set of absent k-mers which are in the genome to be added but not in the graph
+* It relies on kmtricks to find the set of absent k-mers which are in the genome to be added but not in the graph
 
 * [Boost](https://www.boost.org/)
-*[ZSTD](https://anaconda.org/conda-forge/zstd)
+* [ZSTD](https://anaconda.org/conda-forge/zstd)
 ## Installation
 Installing kmtricks: First Install kmtricks [version v1.2.1]
 * From [Bioconda](https://bioconda.github.io):

@@ -111,7 +111,7 @@ void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting
     }
 }
 void Index::serialize(const std::string filename){
-    /*std::vector<char> buffer;
+    std::vector<char> buffer;
     std::ofstream outFile(filename, std::ios::binary);
     for (const auto& vec : kmer_occurences) {
         size_t vSize=vec.size();
@@ -128,12 +128,10 @@ void Index::serialize(const std::string filename){
     // Write the compressed data to a file
     
     outFile.write(compressedData.data(), compressedData.size());
-    outFile.close();*/
-        std::cout<<"Hoho\n";
-
+    outFile.close();
 }
 void Index::deserialize(const std::string filename){
-    /*std::ifstream inFile(filename, std::ios::binary);
+    std::ifstream inFile(filename, std::ios::binary);
 
     // Read the sizes of each unordered_map from the input file
     size_t size[8];
@@ -174,7 +172,7 @@ void Index::deserialize(const std::string filename){
     for(int i=0;i<8;i++){
         std::cout<<kmer_occurences[i].size()<<std::endl;
     }
-    inFile.close();*/
+    inFile.close();
     std::cout<<"Hoho\n";
 }
 size_t Index::find_which_table(uint64_t kmer){
