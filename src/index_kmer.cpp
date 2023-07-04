@@ -111,69 +111,49 @@ void Index::update_unitig(Unitig seq,int current_id,int previous_id,int starting
     }
 }
 void Index::serialize(const std::string filename){
-    std::vector<char> buffer;
     std::ofstream outFile(filename, std::ios::binary);
     for (const auto& vec : kmer_occurences) {
+        std::vector<char> buffer;
         size_t vSize=vec.size();
         outFile.write(reinterpret_cast<char*>(&vSize), sizeof(vSize));
         const char* vecData = reinterpret_cast<const char*>(vec.values().data());
         size_t vecSize = vec.size() * sizeof(std::pair<uint64_t, uint64_t>);
         buffer.insert(buffer.end(), vecData, vecData + vecSize);
+        std::vector<char> compressedData(ZSTD_compressBound(buffer.size()));
+        size_t compressedSize = ZSTD_compress(compressedData.data(), compressedData.size(),
+                                  buffer.data(), buffer.size(), 1);
+        compressedData.resize(compressedSize);
+        outFile.write(reinterpret_cast<char*>(&compressedSize), sizeof(compressedSize));
+        // Write the compressed data to a file
+        outFile.write(compressedData.data(), compressedData.size());
     }
-    std::vector<char> compressedData(ZSTD_compressBound(buffer.size()));
-    size_t compressedSize = ZSTD_compress(compressedData.data(), compressedData.size(),
-                                          buffer.data(), buffer.size(), 1);
-    compressedData.resize(compressedSize);
-
-    // Write the compressed data to a file
     
-    outFile.write(compressedData.data(), compressedData.size());
     outFile.close();
 }
 void Index::deserialize(const std::string filename){
     std::ifstream inFile(filename, std::ios::binary);
-
     // Read the sizes of each unordered_map from the input file
     size_t size[8];
     for (int i = 0; i < 8; i++) {
-        inFile.read(reinterpret_cast<char*>(&size[i]), sizeof(size[i]));
-    }
-
-    // Get the total size of the compressed data
-    inFile.seekg(0, std::ios::end);
-    std::streampos compressedSize = inFile.tellg() - (8 * sizeof(size[0]));
-    inFile.seekg(8 * sizeof(size[0]), std::ios::beg);
-
-    // Read the compressed data into a LargeVector
-    LargeVector compressedData(static_cast<size_t>(compressedSize));
-    inFile.read(compressedData.data(), compressedSize);
+        size_t vecSize;
+        inFile.read(reinterpret_cast<char*>(&vecSize), sizeof(vecSize));
+        size_t compressedSize;
+        inFile.read(reinterpret_cast<char*>(&compressedSize), sizeof(compressedSize));
+        LargeVector compressedData(static_cast<size_t>(compressedSize));
+        inFile.read(compressedData.data(), compressedSize);
 
     // Decompress the compressed buffer using Zstd
-    size_t decompressedSize = ZSTD_getFrameContentSize(compressedData.data(), compressedData.size());
-    LargeVector decompressedData(decompressedSize);
-    decompressedSize = ZSTD_decompress(decompressedData.data(), decompressedData.size(), compressedData.data(), compressedData.size());
-
-    // Deserialize the buffer into an array of std::unordered_map
-    size_t offset = 0;
-    for (int i = 0; i < 8; i++) {
-        kmer_occurences[i].reserve(size[i]);
-        if (size[i] > 0) {
-            const std::pair<uint64_t, uint64_t>* mapData = reinterpret_cast<const std::pair<uint64_t, uint64_t>*>(decompressedData.data() + offset);
-            const std::pair<uint64_t, uint64_t>* mapDataEnd = mapData + size[i];
-
-            while (mapData != mapDataEnd) {
-                kmer_occurences[i].emplace(mapData->first, mapData->second);
-                mapData++;
-            }
-
-            offset += size[i] * sizeof(std::pair<uint64_t, uint64_t>);
+        size_t decompressedSize = ZSTD_getFrameContentSize(compressedData.data(), compressedData.size());
+        LargeVector decompressedData(decompressedSize);
+        decompressedSize = ZSTD_decompress(decompressedData.data(), decompressedData.size(), compressedData.data(), compressedData.size());
+        //kmer_occurences[i].reserve(vecSize);
+        const std::pair<uint64_t, uint64_t>* mapData = reinterpret_cast<const std::pair<uint64_t, uint64_t>*>(decompressedData.data());
+        for(int j=0;j<vecSize;j++){
+            kmer_occurences[i].emplace(mapData->first, mapData->second);
+            mapData++;
         }
     }
-    for(int i=0;i<8;i++){
-        std::cout<<kmer_occurences[i].size()<<std::endl;
-    }
     inFile.close();
-    std::cout<<"Hoho\n";
 }
 size_t Index::find_which_table(uint64_t kmer){
     /*
