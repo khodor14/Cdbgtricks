@@ -99,11 +99,17 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
-            //std::string key=suffix+character_to_add;
-            kmers_to_add_to_graph[canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k())]=true;
-            extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
-            suffix=((suffix<<2)|baseToInt(character_to_add))&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));
-            //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
+            //std::string key=suffix+character_to_add; 
+            uint64_t k_mer_from_funitigs=canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k());
+            if(!kmers_to_add_to_graph[k_mer_from_funitigs]){
+                kmers_to_add_to_graph[k_mer_from_funitigs]=true;
+                extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
+                suffix=((suffix<<2)|baseToInt(character_to_add))&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));
+                //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
+            }
+            else{
+                flag=false;
+            }
         }
         else{
             //we have zero or more than 1 possible right extension of the (k-1)-mer

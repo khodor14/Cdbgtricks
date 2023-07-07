@@ -306,6 +306,7 @@ int main(int argc,char **argv){
         std::string input_to_kmtricks=std::get<1>(arguments["graphfile"]);
         if(std::get<1>(arguments["graphfile"]).length()>4 && !std::strcmp(std::get<1>(arguments["graphfile"]).substr(std::get<1>(arguments["graphfile"]).length()-3).c_str(),"gfa")){
             //if the graph is not in fasta format, convert it to fasta as kmtricks accepts only fasta format (gzipped or not)
+            g2.convertToFasta("unitigs_fasta.fa");
             input_to_kmtricks="unitigs_fasta.fa";
         }
         //call kmtricks
