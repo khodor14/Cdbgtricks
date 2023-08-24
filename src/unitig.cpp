@@ -141,3 +141,9 @@ void Unitig::insert_front(char base){
         unused=unused|12;
     }
 }
+void Unitig::set_color_class_id(int id){
+    color_class_id=id;
+}
+int Unitig::get_color_class_id(){
+    return color_class_id;
+}

@@ -8,6 +8,13 @@
 #include "unitig.h"
 #include <cmath>
 #include <bitset>
+#include "kseq.h"
+#include "zstr.hpp"
+#ifndef KSEQ_INIT_READY
+#define KSEQ_INIT_READY
+#include "kseq.h"
+KSEQ_INIT(gzFile, gzread);
+#endif
 std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constructed_unitigs(const std::unordered_map<int,Unitig>& constructed_unitigs,int k){
     /*
     This function takes the constructed unitigs and build an index for them
@@ -205,10 +212,13 @@ void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *n
     int position=(int)((kmer_data>>1)&0x7FFFFFFF);//the position of (k-1)-mer in this unitig
     Unitig original_unitig=graph.get_unitig(id);//.at(id);
     *num_split=*num_split+1;
+    int color_class_id=original_unitig.get_color_class_id();
     std::vector<uint8_t> encoding=original_unitig.get_encoding();//creating temp copy of the vector
     Unitig left=Unitig(original_unitig.get_left_unused(),3-(position+ind.get_k()-2+(int)(original_unitig.get_left_unused()))%4,std::vector<uint8_t>(encoding.begin(),encoding.begin()+1+static_cast<int>(std::floor((position +ind.get_k()-2+ (int)(original_unitig.get_left_unused()))/4))));
     //original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
     Unitig right=Unitig((position+(int)(original_unitig.get_left_unused()))%4,original_unitig.get_right_unused(),std::vector<uint8_t>(encoding.begin()+static_cast<int>(std::floor((position + (int)(original_unitig.get_left_unused()))/4)),encoding.end()));//take the right from position till the end
+    left.set_color_class_id(color_class_id);
+    right.set_color_class_id(color_class_id);
     graph.insert_unitig(id,left);//keep the id but change the unitig
     /*
     To update the index properly
@@ -422,10 +432,17 @@ void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bo
    }
    //add the remaining constructed unitigs to the unitigs of the graph
     auto start=std::chrono::steady_clock::now();
+    int new_num_colors=graph.get_highest_number_colors();
+    BitVector new_color=BitVector(new_num_colors);
+    new_color.set(new_num_colors-1);
+    int color_id=graph.get_number_classes();
+    graph.insert_color_class(color_id,new_color);
    for(std::pair<int,Unitig> const_unitig:constructed_unitigs){
+    const_unitig.second.set_color_class_id(color_id);
     if(const_unitig.second.unitig_length()>0){
         *max_node_id=*max_node_id+1;
         graph.insert_unitig(*max_node_id,const_unitig.second);
+        graph.insert_color_class(0,new_color);
         if(update_index){
             graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.unitig_length()-graph_index.get_k()+1);
         }
@@ -434,4 +451,175 @@ void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bo
    graph.set_max_node_id(*max_node_id);
     auto end=std::chrono::steady_clock::now();
     *time_update=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
+}
+std::vector<char> possible_right_extension_build(uint64_t mer,int k,std::unordered_map<uint64_t,std::pair<bool,BitVector>> &kmers_to_add_to_graph){
+    /*
+    the input is :a string (k-1)-mer to be extended from the right
+                 :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
+                                                                                        the boolean is used to say that the k-mer had been used to construct another unitig
+    the output is a vector containing the possible characters that can extend the (k-1)-mer to a k-mer 
+
+    example: if the input is mer=ACTG and the map is {ACTGA:false,ACTGT:false,TTGCT:false}
+    then the ouput should be <A,T>
+    */
+
+   std::vector<char> possible_character_for_extension;
+   std::string alphabet="ACTG";
+   uint64_t query;
+   for(int i=0;i<alphabet.length();i++){
+        //the canonical of mer+character from the alphabet is present
+        query=canonical_bits(((mer<<2)&(0xffffffffffffffff>>(64-2*k)))|baseToInt(alphabet[i]),k);
+        if(kmers_to_add_to_graph.count(query)>0){//&& !kmers_to_add_to_graph[query]
+            //add the corresponding character to the vector
+            possible_character_for_extension.push_back(alphabet[i]);
+        }
+   }
+   //return the resultant vector
+   return possible_character_for_extension;
+}
+std::string extend_right_build(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64_t,std::pair<bool,BitVector>> &kmers_to_add_to_graph){
+    /*
+    the input is: a string k-mer representing the k-mer to be extended from right
+                :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
+                :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
+                                                                                        the boolean is used to say that the k-mer had been used to construct another unitig
+    the outpus is a extended string
+    */
+   std::string extended_kmer=kmer;
+   uint64_t suffix=mer&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));//taking the suffix of the kmer to extend it
+   bool flag=true;
+  while (flag)//as long as we can extended the (k-1)-mer suffix of the k-mer
+  {
+    /*
+    if the (k-1)-mer suffix of the k-mer is not in the graph
+    we can try to extends
+    */
+   if(unitigs_index.how_many(suffix)==0){
+    
+    
+    //we cannot extend if the suffix of the k-mer has left extension
+
+    /*
+    if the k-mer is ACTGA and we already have TCTGA in the k-mer set(to be added to the graph)
+    then we cannot extend ACTGA from the right
+    N.B:to test this we send the reverse complement of the suffix and we try to extend it from right
+    */
+    if(possible_right_extension_build(reverse_complement(suffix,unitigs_index.get_k()-1),unitigs_index.get_k(),kmers_to_add_to_graph).size()==1){
+        //now we find the extensions of the actual suffix
+        std::vector<char> possible_character_to_extend=possible_right_extension_build(suffix,unitigs_index.get_k(),kmers_to_add_to_graph);
+        //to extend we should have only one character in the vector
+        if(possible_character_to_extend.size()==1){
+            char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
+            //std::string key=suffix+character_to_add; 
+            uint64_t k_mer_from_funitigs=canonical_bits((suffix<<2)|baseToInt(character_to_add),unitigs_index.get_k());
+            if(!kmers_to_add_to_graph[k_mer_from_funitigs].first){
+                kmers_to_add_to_graph[k_mer_from_funitigs]=std::pair<bool,BitVector>(true,kmers_to_add_to_graph[k_mer_from_funitigs].second);
+                extended_kmer=extended_kmer+character_to_add;//append it to the string only once, the append function takes as argument the number of times we need to append to a string
+                suffix=((suffix<<2)|baseToInt(character_to_add))&(0xffffffffffffffff>>(66-2*unitigs_index.get_k()));
+                //suffix=extended_kmer.substr(extended_kmer.length()-k_mer_length-1,extended_kmer.length());//takes the (k-1)-mer suffix of the extended k-mer
+            }
+            else{
+                flag=false;
+            }
+        }
+        else{
+            //we have zero or more than 1 possible right extension of the (k-1)-mer
+            break;
+        }
+    }
+    else{
+        //the (k-1)-mer suffix of the string has more than one left parent extensions
+        break;
+    }
+   }
+   else{
+    //the suffix already exists in the graph
+    break;
+   }
+  }
+   //return the resultant k-mer
+    return extended_kmer;
+}
+std::string unitig_from_kmers_string(std::string kmer,uint64_t mer,Index& unitig_index, std::unordered_map<uint64_t,std::pair<bool,BitVector>>& kmers){
+   std::string right=extend_right_build(kmer,mer,unitig_index,kmers);//extend the right of the kmer
+    std::string left=reverseComplement(extend_right_build(reverseComplement(kmer),reverse_complement(mer,unitig_index.get_k()),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
+    return left+right.substr(kmer.length(),right.length());//return the concatenatio
+}
+Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<uint64_t,std::pair<bool,BitVector>> &kmers){
+    /*
+    create a unitig from the bit encoding of the k-mer
+    Input: uint64 representing the kmer, the index of graph and all kmers
+    Return a unitig(8 bits per 4 bases,how many left unused bits(0 in this case) and how many right unused bits)
+    */
+    return Unitig(unitig_from_kmers_string(to_string(kmer,unitig_index.get_k()),kmer,unitig_index,kmers));
+}
+void construct_graph_from_kmers(std::unordered_map<uint64_t,std::pair<bool,BitVector>>& kmers,GfaGraph & graph,Index& ind){
+    int id=1;
+    int color_class_id=1;
+    for(auto& kmer:kmers){
+        if(std::get<0>(kmer.second)){
+            BitVector vec=std::get<1>(kmers[kmer.first]);
+            kmers[kmer.first]=std::pair<bool,BitVector>(true,vec);
+            Unitig res=unitig_from_kmers(kmer.first,ind,kmers);//create unitig from this k-mer
+            res.set_color_class_id(color_class_id);
+            graph.insert_unitig(id,res);
+            graph.insert_color_class(color_class_id,vec);
+            ind.insertSubUnitig(res,id,0,res.unitig_length()-ind.get_k()+1);
+            id++;
+            color_class_id++;
+        }
+    }
+    graph.set_max_node_id(id);
+}
+/*
+get new kmers and update colors of unitigs sharing kmers with the graph
+check for the two (k-1)-mers of a kmer if they are already in the index or not
+*/
+std::unordered_map<uint64_t,bool> kmers_for_update(std::string filename,GfaGraph& graph,Index& ind){
+    std::unordered_map<uint64_t,bool> kmers;
+    FILE* fp = fopen(filename.c_str(), "r");
+	if(fp==0){
+		std::cerr<<"Couldn't open the file "<<filename<<std::endl;
+	}
+	kseq_t* kseq;
+    int k=ind.get_k();
+    kseq = kseq_init(gzopen(filename.c_str(),"r"));
+	while(kseq_read(kseq)>=0){
+        std::string_view read(kseq->seq.s);
+        for(int i=0;i<read.size()-k+1;i++){
+            std::string_view kmer=read.substr(i,i+k);
+            uint64_t mer=canonical_bits(hash(kmer),k);
+            if(kmers.count(mer)==0){
+                uint64_t first=mer>>2;
+                uint64_t second=(mer&&(0xffffffffffffffff<<2))>>2;
+                if(ind.how_many(first)>0){
+                    int how_many=ind.how_many(second);
+                    if(how_many==0){
+                        kmers[mer]=true;
+                    }
+                    else{
+                        uint64_t mer_data;
+                        if(how_many==1){
+                            mer_data=ind.find_data(second,0);
+                        }
+                        else{
+                            mer_data=ind.find_data(first,0);
+                        }
+                        int id=mer_data>>32;
+                        int color_id=graph.get_number_classes();
+                        BitVector color=graph.get_color_class(id);
+                        int num_colors=graph.get_highest_number_colors();
+                        color.set(color_id);
+                        graph.insert_color_class(num_colors,color);
+                        graph.update_color_class_id(id,color_id);
+                    }
+                }
+                else{
+                    kmers[mer]=true;
+                }
+            }
+
+        }
+    }
+    return kmers;   
 }
