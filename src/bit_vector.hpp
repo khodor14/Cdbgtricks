@@ -11,7 +11,7 @@ class BitVector{
     public:
         BitVector()= default;
         BitVector(size_t number_bits);
-        BitVector(size_t number_bits,std::vector<uint64_t> colors);
+        BitVector(size_t number_bits,std::vector<uint64_t>& colors);
         void set(size_t pos);
         void unset(size_t pos);
         void reset();
