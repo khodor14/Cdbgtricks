@@ -12,6 +12,7 @@ class Unitig
 private:
     /* data */
     uint8_t unused;//left and write 0000|left|right (left,right={0,1,2,3}=={00,01,10,11})
+    int color_class_id;
     /*
     storing every 4 bases in uint8_t (8 bits)
     */
@@ -37,6 +38,8 @@ public:
     uint64_t get_next_mer(uint64_t mer,const int i,const int k);
     void insert_front(char base);
     void insert_back(char base);
+    void set_color_class_id(int id);
+    int get_color_class_id();
     int unitig_length();
     std::string to_string();
     std::vector<uint8_t> get_encoding();

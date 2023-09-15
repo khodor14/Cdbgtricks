@@ -6,6 +6,13 @@
 #include <sstream>
 #include "CommonUtils.h"
 #include <cassert>
+#include "kseq.h"
+#include "zstr.hpp"
+#ifndef KSEQ_INIT_READY
+#define KSEQ_INIT_READY
+#include "kseq.h"
+KSEQ_INIT(gzFile, gzread);
+#endif
 const char bToN[]={'A','C','G','T'};
 const char revN[]={'T','G','C','A'};
 /*
@@ -48,6 +55,17 @@ size_t baseToInt(char base){
     }
 }
 uint64_t hash(std::string kmer){
+    /*
+    convert kmer to 64 bits
+    */
+    std::uint64_t result=0;
+    for(int i=0;i<kmer.size();i++){
+        result=result<<2;
+        result=result|baseToInt(kmer[i]);
+    }
+    return result;
+}
+uint64_t hash(std::string_view kmer){
     /*
     convert kmer to 64 bits
     */
@@ -229,4 +247,39 @@ uint64_t canonical_bits(const uint64_t kmer,const int k){
 }
 bool is_canonical(const uint64_t kmer,const int k){
     return kmer<reverse_complement(kmer,k);
+}
+void insert_kmers_to_map(std::string filename,std::unordered_map<uint64_t,std::pair<bool,BitVector>> & kmers,size_t num_bits,int color,int k){
+    //update the kmer container if new kmer is found
+    //note that this works only for reference 
+    //for reads we need to associate counters to be used when constructing unitigs
+    FILE* fp = fopen(filename.c_str(), "r");
+	if(fp==0){
+		std::cerr<<"Couldn't open the file "<<filename<<std::endl;
+	}
+	kseq_t* kseq;
+    kseq = kseq_init(gzopen(filename.c_str(),"r"));
+	while(kseq_read(kseq)>=0){
+        std::string_view read(kseq->seq.s);
+        for(int i=0;i<read.size()-k+1;i++){
+            std::string_view kmer=read.substr(i,i+k);
+            uint64_t mer=canonical_bits(hash(kmer),k);
+            if(kmers.count(mer)>0){
+                kmers[mer].second.set(color);
+            }
+            else{
+                BitVector color_class=BitVector(num_bits);
+                color_class.set(color);
+                kmers[mer]=std::pair<bool,BitVector>(true,color_class);
+            }
+
+        }
+    }   
+}
+std::unordered_map<uint64_t,std::pair<bool,BitVector>> prepare_kmers_for_construction(std::vector<std::string> filenames,int k){
+    std::unordered_map<uint64_t,std::pair<bool,BitVector>> kmers;
+    //read the kmers of each file
+    for(int i=0;i<filenames.size();i++){
+        insert_kmers_to_map(filenames[i],kmers,filenames.size(),i,k);
+    }
+    return kmers;
 }

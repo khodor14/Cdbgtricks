@@ -11,6 +11,7 @@
 #include <sstream>
 #include <cmath>
 #include "unitig.h"
+#include "bit_vector.hpp"
 void show_usage(){
     std::cerr<<"Usage: ./ccdbgupdater [COMMAND] [PARAMETERS]"<<"\n\n"
             <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
@@ -19,14 +20,24 @@ void show_usage(){
             <<"\n\n\n"
             
             <<"[COMMAND]:\n"
-            <<"\tupdate \t\t update a compacted de Bruijn graph by a new genome\n"
+            <<"\tbuild \t\t build a compacted and colored de Bruijn Graph\n"
+            <<"\tupdate \t\t update a compacted and colored de Bruijn graph by a new genome\n"
             <<"\tindex \t\t index a compacted de Bruijn graph by (k-1)-mers\n"
-            <<"\tconvert \t\t convert a graph from GFA/FASTA/binary to binary/Fasta\n\n"
+            <<"\tconvert \t convert a graph from GFA/FASTA/binary to binary/Fasta\n\n"
             
+            <<"[PARAMETERS]: build\n\n"
+            <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
+            <<"\t"<<"--input_genome [-igr]"<<"\t the path to the genome used to construct the graph (can be repeated)\n"
+            <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer.\n\t\t\t It must be the same value used when constructing the input graph\n" 
+            <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
+            <<"\t"<<"--output_index[-oi]"<<" write the index to a binary file\n"
+            <<"\t"<<"--output_graph_binary[-ogb]"<<" write the graph in binary format\n"
+            <<"\t"<<"-v"<<" verbosity\n" 
+
             <<"[PARAMETERS]: update\n\n"
             <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
             <<"\t"<<"--input_graph[-ig]"<<"\t the path to the pangenome graph in gfa or fasta format\n"
-            <<"\t"<<"--input_genome"<<"\t the path to the genome used to augment the input graph\n"
+            <<"\t"<<"--input_genome [-igr]"<<"\t the path to the genome used to augment the input graph\n"
             <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer.\n\t\t\t It must be the same value used when constructing the input graph\n" 
             <<"\t"<<"--k_mer_file"<<"\t the file of absent k-mers from the graph if already computed\n"
             <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
@@ -35,6 +46,7 @@ void show_usage(){
             <<"\t"<<"--output_index[-oi]"<<" write the index to a binary file\n"
             <<"\t"<<"--output_graph_binary[-ogb]"<<" write the graph in binary format\n"
             <<"\t"<<"--load_graph_binary[-lgb]"<<" load the graph from binary file\n"
+            <<"\t"<<"--load_Colors[-lc]"<<" read ccdbgupdater colors\n"
             <<"\t"<<"-v"<<" verbosity\n" 
 
             <<"[PARAMETERS]: index\n\n"
@@ -58,7 +70,7 @@ void show_usage(){
             <<"\t"<<"-v"<<" verbosity\n" 
             ;
 }
-std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv){
+std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,char **argv,std::vector<std::string>& filenames){
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments;
     arguments["graphfile"]=std::tuple<bool,std::string>(false,"");
     arguments["genomefile"]=std::tuple<bool,std::string>(false,"");
@@ -74,6 +86,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     arguments["outputindex"]=std::tuple<bool,std::string>(false,"");
     arguments["loadgraphbinary"]=std::tuple<bool,std::string>(false,"");
     arguments["outputgraphbinary"]=std::tuple<bool,std::string>(false,"");
+    arguments["colors"]=std::tuple<bool,std::string>(false,"");
     if(argc<2){
         show_usage();
         exit(0);
@@ -81,6 +94,9 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     if (!strcmp(argv[1], "--help") || !strcmp(argv[1],"-h")){
         show_usage();
         exit(0);
+    }
+    else if (!strcmp(argv[1], "build")){
+        arguments["option"]=std::tuple<bool,std::string>(false,"build");
     }
     else if(!strcmp(argv[1], "update")){
         arguments["option"]=std::tuple<bool,std::string>(false,"update");
@@ -174,6 +190,18 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
                 exit(0);
             }
         }
+        else if (!strcmp(argv[i],"-lc")||!strcmp(argv[i],"--load_Colors"))
+        {
+            if(i+1<argc){
+                arguments["colors"]=std::tuple<bool,std::string>(true,argv[i+1]);
+                i=i+1;
+            }
+            else{
+                std::cerr<<"The path to the index to be loaded is missing, please use -h[--help] for details\n";
+                show_usage();
+                exit(0);
+            }
+        }
         else if (!strcmp(argv[i],"--input_graph")||!strcmp(argv[i],"-ig"))
         {
             if(i+1<argc){
@@ -186,10 +214,11 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
                 exit(0);
             }
         }
-        else if(!strcmp(argv[i],"--input_genome"))
+        else if(!strcmp(argv[i],"-igr")||!strcmp(argv[i],"--input_genome"))
         {
             if(i+1<argc){
                 arguments["genomefile"]=std::tuple<bool,std::string>(true,argv[i+1]);
+                filenames.push_back(argv[i+1]);
                 i=i+1;
             }
             else{
@@ -251,12 +280,19 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
             exit(0);
         }
     }
+    else if (!strcmp(std::get<1>(arguments["option"]).c_str(),"build"))
+    {
+        if(!std::get<0>(arguments["kvalue"])){
+            std::cerr<<"Some required arguments are missing\n";
+        }   
+    }
 
     return arguments;
 }
 int main(int argc,char **argv){
     //parse arguments
-    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
+    std::vector<std::string> filenames;
+    std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv,filenames);
     if(!strcmp(std::get<1>(arguments["option"]).c_str(),"index")){
         GfaGraph g;
         Index ind=Index(stoi(std::get<1>(arguments["kvalue"])));//
@@ -271,6 +307,27 @@ int main(int argc,char **argv){
             ind.create(g);
             ind.serialize(std::get<1>(arguments["outputfilename"])+"_index.bin");
         }        
+    }
+    else if (!strcmp(std::get<1>(arguments["option"]).c_str(),"build"))
+    {
+        std::unordered_map<uint64_t,std::pair<bool,BitVector>> kmers=prepare_kmers_for_construction(filenames,stoi(std::get<1>(arguments["kvalue"])));
+        Index ind=Index(stoi(std::get<1>(arguments["kvalue"])));
+        GfaGraph g;
+        //construct graph and index it
+        construct_graph_from_kmers(kmers,g,ind);
+        //write colors
+        g.write_colors(std::get<1>(arguments["outputfilename"])+"_colors.bin");
+        //output index if needed
+        if(std::get<0>(arguments["outputindex"])){
+            ind.serialize(std::get<1>(arguments["outputfilename"])+"_index.bin");
+        }
+        //output graph in requested format
+        if(std::get<0>(arguments["outputgraphbinary"])){
+            g.serialize(std::get<1>(arguments["outputfilename"])+"_graph.bin");
+        }
+        else{
+            g.convertToFasta(std::get<1>(arguments["outputfilename"])+".fa");
+        }
     }
     else if(!strcmp(std::get<1>(arguments["option"]).c_str(),"convert"))
     {
@@ -302,6 +359,9 @@ int main(int argc,char **argv){
     bool verbose=std::get<0>(arguments["verbosity"]);
     float time_kmtricks=0;
     //if we don't have a kmerfile, then a genome is passed
+    if(!std::get<0>(arguments["colors"])){
+        g2.read_colors(std::get<1>(arguments["colors"]));
+    }
     if(!std::get<0>(arguments["kmerfile"])){
         std::string input_to_kmtricks=std::get<1>(arguments["graphfile"]);
         if(std::get<1>(arguments["graphfile"]).length()>4 && !std::strcmp(std::get<1>(arguments["graphfile"]).substr(std::get<1>(arguments["graphfile"]).length()-3).c_str(),"gfa")){
@@ -359,7 +419,7 @@ int main(int argc,char **argv){
     float time_join=0;
     float time_update=0;
     //merge the unitigs of the graph with the funitigs
-    merge_unitigs(constrtc_index,ind,g2,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true);
+    merge_unitigs(constrtc_index,ind,g2,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true,std::get<0>(arguments["colors"]));
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<std::endl;
     //if we are testing with an already augmented graph
@@ -367,8 +427,8 @@ int main(int argc,char **argv){
     if(std::get<0>(arguments["outputindex"])){
         ind.serialize(std::get<1>(arguments["outputfilename"])+"_index.bin");
     }
-     if(std::get<0>(arguments["outputgraphbinary"])){
-        ind.serialize(std::get<1>(arguments["outputfilename"])+"_graph.bin");
+    if(std::get<0>(arguments["outputgraphbinary"])){
+        g2.serialize(std::get<1>(arguments["outputfilename"])+"_graph.bin");
     }
     else{
         g2.convertToFasta(std::get<1>(arguments["outputfilename"])+".fa");

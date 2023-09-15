@@ -55,15 +55,26 @@ OR
 
 
 [COMMAND]:
-	update 		 update a compacted de Bruijn graph by a new genome
+	build 		 build a compacted and colored de Bruijn Graph
+	update 		 update a compacted and colored de Bruijn graph by a new genome
 	index 		 index a compacted de Bruijn graph by (k-1)-mers
-	convert 		 convert a graph from GFA/FASTA/binary to binary/Fasta
+	convert 	 convert a graph from GFA/FASTA/binary to binary/Fasta
 
+[PARAMETERS]: build
+
+	-h[--help]	 prints this help message
+	--input_genome [-igr]	 the path to the genome used to construct the graph (can be repeated)
+	--k_mer_size[-k] the size of the k-mer.
+			 It must be the same value used when constructing the input graph
+	--output_file_name[-o] the name of the output file
+	--output_index[-oi] write the index to a binary file
+	--output_graph_binary[-ogb] write the graph in binary format
+	-v verbosity
 [PARAMETERS]: update
 
 	-h[--help]	 prints this help message
 	--input_graph[-ig]	 the path to the pangenome graph in gfa or fasta format
-	--input_genome	 the path to the genome used to augment the input graph
+	--input_genome [-igr]	 the path to the genome used to augment the input graph
 	--k_mer_size[-k] the size of the k-mer.
 			 It must be the same value used when constructing the input graph
 	--k_mer_file	 the file of absent k-mers from the graph if already computed
@@ -73,6 +84,7 @@ OR
 	--output_index[-oi] write the index to a binary file
 	--output_graph_binary[-ogb] write the graph in binary format
 	--load_graph_binary[-lgb] load the graph from binary file
+	--load_Colors[-lc] read ccdbgupdater colors
 	-v verbosity
 [PARAMETERS]: index
 
@@ -93,7 +105,7 @@ OR
 	 -ob	 output in binary format
 	--output_file_name[-o] the name of the output file
 	-v verbosity
-
+  
 ```
 ### Examples
   1. **Update a compacted de bruijn graph from a kmer file**

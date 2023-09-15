@@ -10,7 +10,7 @@ set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h)
+add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/bit_vector.cpp src/ColorSet.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h)
 
 #adding the directory
 add_subdirectory(external/sparsehash)

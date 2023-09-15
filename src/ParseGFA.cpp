@@ -296,3 +296,28 @@ void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 std::unordered_map<int,Unitig> GfaGraph::get_nodes(){
 	return unitigs;
 }
+void GfaGraph::insert_color_class(int id,BitVector& colors){
+	color_classes.insert_Color_class(id,colors);
+}
+int GfaGraph::get_highest_number_colors(){
+	return color_classes.get_number_color_names();
+}
+void GfaGraph::insert_color_name(int id,std::string color_name){
+	color_classes.insert_color_class_name(id,color_name);
+}
+int GfaGraph::get_number_classes(){
+	return color_classes.get_highest_color_class_id();
+}
+void GfaGraph::update_color_class_id(int id,int color_class_id){
+	unitigs[id].set_color_class_id(color_class_id);
+}
+
+BitVector GfaGraph::get_color_class(int id){
+	return color_classes.get_color_class(unitigs[id].get_color_class_id());
+}
+void GfaGraph::write_colors(std::string filename){
+	color_classes.write(filename);
+}
+void GfaGraph::read_colors(std::string filename){
+	color_classes.read(filename);
+}
