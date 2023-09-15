@@ -7,6 +7,9 @@
 class BitVector{
     private:
         size_t number_of_bits;
+        int number_of_bits_set;
+        int number_left_bits;
+        int number_right_bits;
         std::vector<uint64_t> bit_array;
     public:
         BitVector()= default;
@@ -20,6 +23,7 @@ class BitVector{
         std::vector<uint64_t> getColors();
         size_t get_number_of_bits();
         bool operator==(const BitVector& other) const;
+        uint64_t get_identity();
         inline bool operator!=(const BitVector& other)const { 
             return !operator==(other);
         }

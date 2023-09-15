@@ -419,7 +419,7 @@ int main(int argc,char **argv){
     float time_join=0;
     float time_update=0;
     //merge the unitigs of the graph with the funitigs
-    merge_unitigs(constrtc_index,ind,g2,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true);
+    merge_unitigs(constrtc_index,ind,g2,constrct_unitigs,&max_node_id,&num_split,&num_join,&time_split,&time_join,&time_update,verbose,true,std::get<0>(arguments["colors"]));
     std::cout<<"Split\tJoin\t t index\t t kmtricks \t t construct\t t indexU \t t split \t t join"<<std::endl;
     std::cout<<num_split<<"\t"<<num_join<<"\t"<<time_index<<"\t"<<time_kmtricks<<"\t"<<time_construction<<"\t"<<time_index_constructed_unitigs<<"\t"<<time_split<<"\t"<<time_join<<std::endl;
     //if we are testing with an already augmented graph

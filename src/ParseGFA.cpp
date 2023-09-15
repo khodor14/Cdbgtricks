@@ -316,8 +316,8 @@ BitVector GfaGraph::get_color_class(int id){
 	return color_classes.get_color_class(unitigs[id].get_color_class_id());
 }
 void GfaGraph::write_colors(std::string filename){
-	std::cout<<"\n";
+	color_classes.write(filename);
 }
 void GfaGraph::read_colors(std::string filename){
-	std::cout<<"\n";
+	color_classes.read(filename);
 }

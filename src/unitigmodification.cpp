@@ -191,7 +191,7 @@ size_t decision(const uint64_t k_1_mer,const std::vector<std::tuple<int,int,bool
 
     return decision;
 }
-void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *num_split,float *time_split,bool verbose){
+void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *num_split,float *time_split,bool verbose,bool coloring){
     /*
     The input are:
                 the unitigs of the graph
@@ -217,8 +217,10 @@ void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *n
     Unitig left=Unitig(original_unitig.get_left_unused(),3-(position+ind.get_k()-2+(int)(original_unitig.get_left_unused()))%4,std::vector<uint8_t>(encoding.begin(),encoding.begin()+1+static_cast<int>(std::floor((position +ind.get_k()-2+ (int)(original_unitig.get_left_unused()))/4))));
     //original_unitig.substr(0,position+k-1);//take the left from position 0 into position=position+k
     Unitig right=Unitig((position+(int)(original_unitig.get_left_unused()))%4,original_unitig.get_right_unused(),std::vector<uint8_t>(encoding.begin()+static_cast<int>(std::floor((position + (int)(original_unitig.get_left_unused()))/4)),encoding.end()));//take the right from position till the end
-    left.set_color_class_id(color_class_id);
-    right.set_color_class_id(color_class_id);
+    if(coloring){
+        left.set_color_class_id(color_class_id);
+        right.set_color_class_id(color_class_id);
+    }
     graph.insert_unitig(id,left);//keep the id but change the unitig
     /*
     To update the index properly
@@ -233,7 +235,7 @@ void split(GfaGraph &graph,Index &ind,uint64_t kmer_data,int *max_node_id,int *n
     }
     *max_node_id=*max_node_id+1;//incrementing the max nod id
 }
-void checkAndMerge(uint64_t occurence_graph,std::tuple<int,int,bool> occurence_unitig,std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,GfaGraph& graph,std::unordered_map<int,Unitig> &constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose){
+void checkAndMerge(uint64_t occurence_graph,std::tuple<int,int,bool> occurence_unitig,std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> &unitig_index,Index& index_graph,GfaGraph& graph,std::unordered_map<int,Unitig> &constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,bool verbose,bool coloring){
     /*
         the inputs of the function:
                         the occurence of k-1 mer in the graph
@@ -279,7 +281,7 @@ void checkAndMerge(uint64_t occurence_graph,std::tuple<int,int,bool> occurence_u
         decision one means we need to split the unitig
         */
 
-        split(graph,index_graph,occ_g,max_node_id,num_split,time_split,verbose);
+        split(graph,index_graph,occ_g,max_node_id,num_split,time_split,verbose,coloring);
        }
        else if (dec==2){
             /*
@@ -413,7 +415,7 @@ std::tuple<std::string,bool> can_we_merge(int position_u,int position_g,bool ori
     return std::tuple<std::string,bool>(concatenation,order);
 }
 
-void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,GfaGraph& graph,std::unordered_map<int,Unitig>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,float * time_update,bool verbose,bool update_index){
+void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>>& unitig_index,Index& graph_index,GfaGraph& graph,std::unordered_map<int,Unitig>& constructed_unitigs,int *max_node_id,int *num_split,int *num_join,float *time_split,float * time_join,float * time_update,bool verbose,bool update_index,bool coloring){
     /*
         this function takes the unitigs of the graph, the constructed unitigs and their index
 
@@ -424,27 +426,40 @@ void merge_unitigs(std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bo
         uint64_t graph_occ=graph_index.find_data(mer_unitig,0);//all occurrences in the graph
         int dec=decision(mer_unitig,elem.second,graph_index,graph,graph_index.get_k());
         if(dec==1){//split
-            split(graph,graph_index,graph_occ,max_node_id,num_split,time_split,verbose);
+            split(graph,graph_index,graph_occ,max_node_id,num_split,time_split,verbose,coloring);
         }
         else if(dec==2){//merge
-            checkAndMerge(graph_occ,elem.second.front(),unitig_index,graph_index,graph,constructed_unitigs,max_node_id,num_split,num_join,time_split,time_join,verbose);
+            checkAndMerge(graph_occ,elem.second.front(),unitig_index,graph_index,graph,constructed_unitigs,max_node_id,num_split,num_join,time_split,time_join,verbose,coloring);
         }    
    }
    //add the remaining constructed unitigs to the unitigs of the graph
     auto start=std::chrono::steady_clock::now();
+   if(coloring){
     int new_num_colors=graph.get_highest_number_colors();
-    BitVector new_color=BitVector(new_num_colors);
+    BitVector new_color=BitVector(new_num_colors);//all the remaining funitigs have the same color as they belong to the added genome
     new_color.set(new_num_colors-1);
     int color_id=graph.get_number_classes();
     graph.insert_color_class(color_id,new_color);
-   for(std::pair<int,Unitig> const_unitig:constructed_unitigs){
-    const_unitig.second.set_color_class_id(color_id);
-    if(const_unitig.second.unitig_length()>0){
-        *max_node_id=*max_node_id+1;
-        graph.insert_unitig(*max_node_id,const_unitig.second);
-        graph.insert_color_class(0,new_color);
-        if(update_index){
-            graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.unitig_length()-graph_index.get_k()+1);
+      for(std::pair<int,Unitig> const_unitig:constructed_unitigs){
+        if(const_unitig.second.unitig_length()>0){
+            const_unitig.second.set_color_class_id(color_id);
+            *max_node_id=*max_node_id+1;
+            graph.insert_unitig(*max_node_id,const_unitig.second);
+            graph.insert_color_class(0,new_color);
+            if(update_index){
+                graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.unitig_length()-graph_index.get_k()+1);
+            }
+        }
+    }
+   }
+   else{
+    for(std::pair<int,Unitig> const_unitig:constructed_unitigs){
+        if(const_unitig.second.unitig_length()>0){
+            *max_node_id=*max_node_id+1;
+            graph.insert_unitig(*max_node_id,const_unitig.second);
+            if(update_index){
+                graph_index.insertSubUnitig(const_unitig.second,*max_node_id,0,const_unitig.second.unitig_length()-graph_index.get_k()+1);
+            }
         }
     }
    }
@@ -554,19 +569,44 @@ Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<u
     return Unitig(unitig_from_kmers_string(to_string(kmer,unitig_index.get_k()),kmer,unitig_index,kmers));
 }
 void construct_graph_from_kmers(std::unordered_map<uint64_t,std::pair<bool,BitVector>>& kmers,GfaGraph & graph,Index& ind){
-    int id=1;
-    int color_class_id=1;
+    /*
+    constructing a colored and compacted de Bruijn graph
+    the input is a set of k-mers with their colors
+                   an empty graph
+                   an empty index
+    */
+    int id=1;//id unitig 
+    int color_class_id=1;//id of color class
     for(auto& kmer:kmers){
-        if(std::get<0>(kmer.second)){
+        if(!std::get<0>(kmer.second)){// if the k-mer is not used yet in other unitig
             BitVector vec=std::get<1>(kmers[kmer.first]);
-            kmers[kmer.first]=std::pair<bool,BitVector>(true,vec);
+            kmers[kmer.first]=std::pair<bool,BitVector>(true,vec); //mark it as used
             Unitig res=unitig_from_kmers(kmer.first,ind,kmers);//create unitig from this k-mer
-            res.set_color_class_id(color_class_id);
-            graph.insert_unitig(id,res);
-            graph.insert_color_class(color_class_id,vec);
-            ind.insertSubUnitig(res,id,0,res.unitig_length()-ind.get_k()+1);
+            uint64_t vec_hash=vec.get_identity();//get the fingerprint of the color class
+            if(graph.hash_exist(vec_hash)){// if some color classes has the same fingerprint
+                std::vector<int> ids=graph.get_similar_vector(vec_hash);//get the ids of these classes
+                int similar_id=graph.same_vector(vec,ids);//get the id of color class having the same color
+                if(similar_id==-1){//this color class does not exist
+                    graph.insert_id_hash(vec_hash,color_class_id);//insert the color class finger print
+                    res.set_color_class_id(color_class_id);// assign color class id to the unitig
+                    graph.insert_color_class(color_class_id,vec);
+                    color_class_id++;
+                    
+                }
+                else{
+                    res.set_color_class_id(similar_id);// the color class already exist assign it to the unitig
+                }
+            }
+            else{//the fingerprint does not exist, then the color class does not exist
+                graph.insert_id_hash(vec_hash,color_class_id);// insert fingerprint to the graph
+                res.set_color_class_id(color_class_id);//assign color class id to the unitig
+                graph.insert_color_class(color_class_id,vec);//insert new color class
+                color_class_id++;
+            }
+            
+            graph.insert_unitig(id,res);//insert the unitig to the graph
+            ind.insertSubUnitig(res,id,0,res.unitig_length()-ind.get_k()+1);//insert the unitig to the index
             id++;
-            color_class_id++;
         }
     }
     graph.set_max_node_id(id);

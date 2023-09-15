@@ -74,6 +74,18 @@ public:
     void write_colors(std::string filename);
     void read_colors(std::string filename);
     ~GfaGraph() = default;
+    inline void insert_id_hash(uint64_t hash,int id){
+        color_classes.insert_id_hash(hash,id);
+    }
+    inline bool hash_exist(uint64_t hash){
+        return color_classes.hash_exist(hash);
+    }
+    inline std::vector<int> get_similar_vector(uint64_t hash){
+        return color_classes.get_similar_vector(hash);
+    }
+    inline int same_vector(BitVector query,std::vector<int> ids){
+        return color_classes.same_vector(query,ids);
+    }
 };
 
 #endif // !ParseGFA_H
