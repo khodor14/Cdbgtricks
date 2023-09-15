@@ -19,3 +19,4 @@ std::string bits_to_seq_4(uint8_t encoding,int length);
 uint64_t reverse_complement(const uint64_t kmer,const int k);
 uint64_t canonical_bits(const uint64_t kmer,const int k);
 bool is_canonical(const uint64_t kmer,const int k);
+uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m);
