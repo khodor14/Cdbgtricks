@@ -40,7 +40,7 @@ std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> index_constru
   }
   return index;//return the constructed index
 }
-std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph,int k){
+std::vector<char> possible_right_extension(uint64_t mer,int k,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph,Index& ind,GfaGraph& graph){
     /*
     the input is :a string (k-1)-mer to be extended from the right
                  :an unordered map containing the canonical forms of k-mers as keys and boolean value as values
@@ -61,12 +61,19 @@ std::vector<char> possible_right_extension(uint64_t mer,std::unordered_map<uint6
             //add the corresponding character to the vector
             possible_character_for_extension.push_back(alphabet[i]);
         }
+        else
+        {
+            uint64_t kmer_pos=ind.kmer_position(query);//get the k-mer position(id,position in unitig,orientation)
+            if(graph.test_kmer_presence(query,kmer_pos,ind.get_k())){
+                return {};
+            }
+        }
    }
    //return the resultant vector
    return possible_character_for_extension;
 
 }
-std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph){
+std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std::unordered_map<uint64_t,bool> &kmers_to_add_to_graph,GfaGraph& graph){
     /*
     the input is: a string k-mer representing the k-mer to be extended from right
                 :the index of the unitigs, i.e. (k-1)-mer -> (unitig id,position,orientation)
@@ -83,7 +90,8 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
     if the (k-1)-mer suffix of the k-mer is not in the graph
     we can try to extends
     */
-   if(unitigs_index.how_many(suffix)==0){
+   std::vector<char> possible_character_to_extend=possible_right_extension(suffix,unitigs_index.get_k(),kmers_to_add_to_graph,unitigs_index,graph);
+   if(possible_character_to_extend.size()==1){
     
     
     //we cannot extend if the suffix of the k-mer has left extension
@@ -93,9 +101,9 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
     then we cannot extend ACTGA from the right
     N.B:to test this we send the reverse complement of the suffix and we try to extend it from right
     */
-    if(possible_right_extension(reverse_complement(suffix,unitigs_index.get_k()-1),kmers_to_add_to_graph,unitigs_index.get_k()).size()==1){
+    if(possible_right_extension(reverse_complement(suffix,unitigs_index.get_k()-1),unitigs_index.get_k(),kmers_to_add_to_graph,unitigs_index,graph).size()==1){
         //now we find the extensions of the actual suffix
-        std::vector<char> possible_character_to_extend=possible_right_extension(suffix,kmers_to_add_to_graph,unitigs_index.get_k());
+        
         //to extend we should have only one character in the vector
         if(possible_character_to_extend.size()==1){
             char character_to_add=possible_character_to_extend.front();//get the character to augment it to our string result from the vector
@@ -129,20 +137,20 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
    //return the resultant k-mer
     return extended_kmer;
 }
-std::string unitig_from_kmers_string(std::string kmer,uint64_t mer,Index& unitig_index, std::unordered_map<uint64_t,bool>& kmers){
-    std::string right=extend_right(kmer,mer,unitig_index,kmers);//extend the right of the kmer
-    std::string left=reverseComplement(extend_right(reverseComplement(kmer),reverse_complement(mer,unitig_index.get_k()),unitig_index,kmers));//extend the left, extend right of reverse then reverse the result
+std::string unitig_from_kmers_string(std::string kmer,uint64_t mer,Index& unitig_index, std::unordered_map<uint64_t,bool>& kmers,GfaGraph& graph){
+    std::string right=extend_right(kmer,mer,unitig_index,kmers,graph);//extend the right of the kmer
+    std::string left=reverseComplement(extend_right(reverseComplement(kmer),reverse_complement(mer,unitig_index.get_k()),unitig_index,kmers,graph));//extend the left, extend right of reverse then reverse the result
     return left+right.substr(kmer.length(),right.length());//return the concatenation of left and right. Omit the first k characters of right because they are the suffix of left
 }
-Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers){
+Unitig unitig_from_kmers(uint64_t kmer,Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers,GfaGraph& graph){
     /*
     create a unitig from the bit encoding of the k-mer
     Input: uint64 representing the kmer, the index of graph and all kmers
     Return a unitig(8 bits per 4 bases,how many left unused bits(0 in this case) and how many right unused bits)
     */
-    return Unitig(unitig_from_kmers_string(to_string(kmer,unitig_index.get_k()),kmer,unitig_index,kmers));
+    return Unitig(unitig_from_kmers_string(to_string(kmer,unitig_index.get_k()),kmer,unitig_index,kmers,graph));
 }
-std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers,int k){
+std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, std::unordered_map<uint64_t,bool> &kmers,int k,GfaGraph& graph){
     /*
     simple modification is needed
     the input should be a map(int,bool) meaning that the hash values are already computed
@@ -153,7 +161,7 @@ std::unordered_map<int,Unitig> construct_unitigs_from_kmer(Index &unitig_index, 
     {
         if(!element.second){//if this k-mer was not used in any unitig
             kmers[element.first]=true;
-            Unitig res=unitig_from_kmers(element.first,unitig_index,kmers);//create unitig from this k-mer
+            Unitig res=unitig_from_kmers(element.first,unitig_index,kmers,graph);//create unitig from this k-mer
             unitigs_map[i]=res;//put it back to map
             i++;            
         }

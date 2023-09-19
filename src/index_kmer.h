@@ -44,6 +44,7 @@ public:
     void deserialize(const std::string filename);
     size_t how_many(const uint64_t k_1_mer);//the number of occurrences of a (k-1)-mer
     uint64_t find_data(uint64_t k_1_mer,size_t i);//find the data in the i-th table
+    uint64_t kmer_position(uint64_t kmer);
     ~Index()=default;
 };
 #endif // !index_kmer_H

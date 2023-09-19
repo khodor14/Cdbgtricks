@@ -296,3 +296,25 @@ void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 std::unordered_map<int,Unitig> GfaGraph::get_nodes(){
 	return unitigs;
 }
+bool GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t kmer_pos,int k){
+	/*
+	Input:
+		a k-mer
+		its position info (64 bits):see below
+		its size
+	return true if this k-mer is in the graph
+	this function is needed as an mphf will return a valid identifier for a given k-mer, to validate that this k-mer
+	is not an alien one, we compare it with the one at the provided position
+	*/
+	//assuming kmer is sent in its canonical form
+	/*Representation of k-mer position
+	|32 bits for unitig id|31 bits for position in this unitig|1 bit for orientation|
+	*/
+	int id_unitig_graph=(int)(kmer_pos>>32);//the id of the unitig having the first occurence
+    int position_unitig=(int)((kmer_pos>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
+	bool orient=kmer_pos&1;//the orientation
+	uint64_t kmer_in_graph=unitigs[id_unitig_graph].get_ith_mer(position_unitig,k);//take the k-mer from the unitig
+	//either same orientation or different orientation
+	//in the case of different orientation, we compare the kmer to the canonical form of the k-mer in graph
+	return (orient && kmer_in_graph==kmer)||(!orient && kmer==canonical_bits(kmer_in_graph,k));
+}

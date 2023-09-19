@@ -7,6 +7,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include "unitig.h"
 #include "FileSerializer.hpp"
+#include "CommonUtils.h"
 #ifndef ParseGFA_H
 #define ParseGFA_H
 
@@ -59,6 +60,7 @@ public:
     void delete_unitig(int id);
     void insert_unitig(int id,Unitig u);
     Unitig get_unitig(int id);
+    bool test_kmer_presence(uint64_t kmer,uint64_t kmer_position,int k);
     void serialize(const std::string filename);
     void deserialize(const std::string filename);
     ~GfaGraph() = default;

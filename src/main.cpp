@@ -335,7 +335,7 @@ int main(int argc,char **argv){
     float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     start=std::chrono::steady_clock::now();
     //construct the funitigs from the absent kmers
-    std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer,stoi(std::get<1>(arguments["kvalue"])));   
+    std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer,stoi(std::get<1>(arguments["kvalue"])),g2);   
     end=std::chrono::steady_clock::now();
     float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
     /*
