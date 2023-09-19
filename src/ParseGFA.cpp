@@ -296,13 +296,13 @@ void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 std::unordered_map<int,Unitig> GfaGraph::get_nodes(){
 	return unitigs;
 }
-bool GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t kmer_pos,int k){
+int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos,int k){
 	/*
 	Input:
 		a k-mer
 		its position info (64 bits):see below
 		its size
-	return true if this k-mer is in the graph
+	return if this k-mer is in the graph and if we encountered a split position along with the split position
 	this function is needed as an mphf will return a valid identifier for a given k-mer, to validate that this k-mer
 	is not an alien one, we compare it with the one at the provided position
 	*/
@@ -313,8 +313,46 @@ bool GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t kmer_pos,int k){
 	int id_unitig_graph=(int)(kmer_pos>>32);//the id of the unitig having the first occurence
     int position_unitig=(int)((kmer_pos>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
 	bool orient=kmer_pos&1;//the orientation
-	uint64_t kmer_in_graph=unitigs[id_unitig_graph].get_ith_mer(position_unitig,k);//take the k-mer from the unitig
+	Unitig seq=unitigs[id_unitig_graph];
+	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
 	//either same orientation or different orientation
 	//in the case of different orientation, we compare the kmer to the canonical form of the k-mer in graph
-	return (orient && kmer_in_graph==kmer)||(!orient && kmer==canonical_bits(kmer_in_graph,k));
+	if((orient && kmer_in_graph==kmer)||(!orient && kmer==canonical_bits(kmer_in_graph,k))){
+		/*
+		The k-mer (i.e. the suffix as well) is in the graph with 3-possible cases
+					1- Case split easy to detect (we check that the suffix of kmer is neither the suffix nor the prefix of unitig)
+					2- 
+		*/
+		uint64_t pref=kmer_in_graph>>2;
+		uint64_t suff=kmer_in_graph&(0xffffffffffffffff>>(66-2*k));
+		if(position_unitig>0&&position_unitig<seq.unitig_length()-k){
+			//the kmer is not the k-suffix not the k-prefix => we encounter a split position=>let's compute the split position
+			if(canonical_bits(suffix,k-1)==canonical_bits(suff,k-1)){
+				return position_unitig+1;
+			}
+			else{
+				return position_unitig;
+			}
+		}
+		else{
+			//making sure that we don't have a split position
+			
+			if(position_unitig==0){
+				//compare suffix to suff
+				if(canonical_bits(suffix,k-1)==canonical_bits(suff,k-1)){
+					return 1;//we have to split at position=1
+				}	
+			}
+			else{
+				if(canonical_bits(pref,k-1)==canonical_bits(suffix,k-1)){
+					return seq.unitig_length()-k;//we split at position |u|
+				}
+			}
+			return 0;
+		}
+
+	}
+	else{
+		return -1;//the k-mer is not in the graph
+	}
 }

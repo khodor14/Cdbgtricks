@@ -64,7 +64,8 @@ std::vector<char> possible_right_extension(uint64_t mer,int k,std::unordered_map
         else
         {
             uint64_t kmer_pos=ind.kmer_position(query);//get the k-mer position(id,position in unitig,orientation)
-            if(graph.test_kmer_presence(query,kmer_pos,ind.get_k())){
+            int may_exist=graph.test_kmer_presence(query,kmer_pos,mer,ind.get_k());
+            if(may_exist>0){//we encountered a split position we add the position to a vector which will be sorted and processed
                 return {};
             }
         }
@@ -89,6 +90,9 @@ std::string extend_right(std::string kmer,uint64_t mer, Index& unitigs_index,std
     /*
     if the (k-1)-mer suffix of the k-mer is not in the graph
     we can try to extends
+    if possible_character_to_extend contains nothing then the suffix is in the graph=>here we tested 4 cases the other 4 are tested in the second if
+    if it contains more than one character then we have more possibilies ==> we can't extend
+    otherwise we try to extend if this suffix is not extendable from left
     */
    std::vector<char> possible_character_to_extend=possible_right_extension(suffix,unitigs_index.get_k(),kmers_to_add_to_graph,unitigs_index,graph);
    if(possible_character_to_extend.size()==1){
