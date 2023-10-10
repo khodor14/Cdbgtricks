@@ -61,6 +61,7 @@ public:
     void insert_unitig(int id,Unitig u);
     Unitig get_unitig(int id);
     int test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos,int k);
+    uint16_t get_kmer(uint64_t position);
     void serialize(const std::string filename);
     void deserialize(const std::string filename);
     ~GfaGraph() = default;

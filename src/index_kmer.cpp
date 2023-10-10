@@ -34,12 +34,13 @@ int Index::get_k(){
     return k;
 }
 void Index::create(GfaGraph& graph){
+    // add description of function
    //index_table.set_empty_key(NULL);
     for(std::pair<int,Unitig> node:graph.get_nodes()){
        uint64_t i_th_mer=node.second.get_ith_mer(0,k-1);
        std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(i_th_mer,k-1);
        uint64_t position=(uint64_t)node.first;
-       position=(position<<32)|std::get<1>(seq_data);
+       position=(position<<32)|std::get<1>(seq_data);//add clarification
        kmer_occurences[find_which_table(std::get<0>(seq_data))][std::get<0>(seq_data)]=position;
        for(int i=1;i<=node.second.unitig_length()-k+1;i++){
             i_th_mer=node.second.get_next_mer(i_th_mer,i,k-1);

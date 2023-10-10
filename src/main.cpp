@@ -284,7 +284,7 @@ int main(int argc,char **argv){
             g.convertToFasta(std::get<1>(arguments["outputfilename"])+".fa");
         }
     }
-    else{
+    else{//update the graph
     std::unordered_map<uint64_t,bool> k_mer;
     //load the input graph
     auto start_g=std::chrono::steady_clock::now();

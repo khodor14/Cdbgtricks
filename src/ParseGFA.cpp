@@ -312,47 +312,31 @@ int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos
 	*/
 	int id_unitig_graph=(int)(kmer_pos>>32);//the id of the unitig having the first occurence
     int position_unitig=(int)((kmer_pos>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
-	bool orient=kmer_pos&1;//the orientation
 	Unitig seq=unitigs[id_unitig_graph];
 	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
-	//either same orientation or different orientation
-	//in the case of different orientation, we compare the kmer to the canonical form of the k-mer in graph
-	if((orient && kmer_in_graph==kmer)||(!orient && kmer==canonical_bits(kmer_in_graph,k))){
-		/*
-		The k-mer (i.e. the suffix as well) is in the graph with 3-possible cases
-					1- Case split easy to detect (we check that the suffix of kmer is neither the suffix nor the prefix of unitig)
-					2- 
-		*/
-		uint64_t pref=kmer_in_graph>>2;
-		uint64_t suff=kmer_in_graph&(0xffffffffffffffff>>(66-2*k));
-		if(position_unitig>0&&position_unitig<seq.unitig_length()-k){
-			//the kmer is not the k-suffix not the k-prefix => we encounter a split position=>let's compute the split position
-			if(canonical_bits(suffix,k-1)==canonical_bits(suff,k-1)){
+	std::tuple<uint64_t,bool> kmer_query_canonical=reverseComplementCanonical(kmer,k);
+	std::tuple<uint64_t,bool> kmer_graph_canonical=reverseComplementCanonical(kmer_in_graph,k);
+
+	if(std::get<0>(kmer_query_canonical)==std::get<0>(kmer_graph_canonical)){
+		//the k-mer is in the graph
+		if(std::get<1>(kmer_graph_canonical)==std::get<1>(kmer_query_canonical)){
+			//we have the same orientation in graph and query
+			//It means that the the prefix of query k-mer is the prefix of graph k-mer
+			return position_unitig;//0 if join (maybe), >0 otherwise
+		}
+		else{
+			if(position_unitig<seq.unitig_length()-k){
+				//split position
 				return position_unitig+1;
 			}
 			else{
-				return position_unitig;
+				return 0;//maybe join let the calling function decide
 			}
 		}
-		else{
-			//making sure that we don't have a split position
-			
-			if(position_unitig==0){
-				//compare suffix to suff
-				if(canonical_bits(suffix,k-1)==canonical_bits(suff,k-1)){
-					return 1;//we have to split at position=1
-				}	
-			}
-			else{
-				if(canonical_bits(pref,k-1)==canonical_bits(suffix,k-1)){
-					return seq.unitig_length()-k;//we split at position |u|
-				}
-			}
-			return 0;
-		}
-
+		return 1;
 	}
 	else{
 		return -1;//the k-mer is not in the graph
 	}
+
 }

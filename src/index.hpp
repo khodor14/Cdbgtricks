@@ -11,6 +11,8 @@ struct mphf_data {
 	uint64_t mphf_size;
 	pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> *kmer_MPHF;
 	bool empty;
+    bool modified;
+    bool created;
     template <typename Visitor>
     void visit(Visitor& visitor){
         visitor.visit(mphf_size);
@@ -30,6 +32,7 @@ private:
 public:
     Index(size_t k_size,size_t m_size);
     void build(GfaGraph& graph);
+    void update(GfaGraph& graph);
     uint64_t kmer_position(uint64_t kmer);
     template <typename Visitor>
     void visit(Visitor& visitor) {
