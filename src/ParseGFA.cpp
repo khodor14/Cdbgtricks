@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <memory>
 #include "zstr.hpp"
+#include <bitset>
 #ifndef KSEQ_INIT_READY
 #define KSEQ_INIT_READY
 #include "kseq.h"
@@ -81,10 +82,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 	std::string line;
 	std::vector<std::string> line_fields;
 	int max_id=0;
-	std::ofstream graphfile;
-	std::ostream graphf(0);
-	graphfile.open(filename);
-	graphf.rdbuf(graphfile.rdbuf());
 	std::string seq;
 	while (getline(gin, line).good())
 	{
@@ -108,8 +105,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 					max_id=id;
 				}
 				seq=move(line_fields[1]);
-				graphf<<">sequence"+std::to_string(id)<<std::endl;
-				graphf<<seq<<std::endl;
 				graph.unitigs[id]=Unitig(seq);
 				line_fields.clear();
 		}
@@ -151,7 +146,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
             graph.edges.push_back(e);
 		}*/
 	}
-	graphfile.close();
 	graph.set_max_node_id(max_id);
 	return graph;
 }
@@ -310,8 +304,8 @@ int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos
 	/*Representation of k-mer position
 	|32 bits for unitig id|31 bits for position in this unitig|1 bit for orientation|
 	*/
-	int id_unitig_graph=(int)(kmer_pos>>32);//the id of the unitig having the first occurence
-    int position_unitig=(int)((kmer_pos>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
+	int id_unitig_graph=kmer_pos>>32;//the id of the unitig having the first occurence
+    int position_unitig=(kmer_pos>>1)&0x7FFFFFFF;//the position of k-mer in this unitig
 	Unitig seq=unitigs[id_unitig_graph];
 	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
 	std::tuple<uint64_t,bool> kmer_query_canonical=reverseComplementCanonical(kmer,k);
@@ -319,24 +313,30 @@ int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos
 
 	if(std::get<0>(kmer_query_canonical)==std::get<0>(kmer_graph_canonical)){
 		//the k-mer is in the graph
-		if(std::get<1>(kmer_graph_canonical)==std::get<1>(kmer_query_canonical)){
-			//we have the same orientation in graph and query
-			//It means that the the prefix of query k-mer is the prefix of graph k-mer
-			return position_unitig;//0 if join (maybe), >0 otherwise
+		uint64_t pref_kmer=canonical_bits(kmer_in_graph>>2,k-1);
+		if(suffix==pref_kmer){
+			return position_unitig;
 		}
 		else{
-			if(position_unitig<seq.unitig_length()-k){
-				//split position
-				return position_unitig+1;
+			if(position_unitig==seq.unitig_length()-k){
+				return 0;
 			}
 			else{
-				return 0;//maybe join let the calling function decide
+				return position_unitig+1;
 			}
 		}
-		return 1;
 	}
 	else{
 		return -1;//the k-mer is not in the graph
 	}
 
+}
+uint64_t GfaGraph::get_kmer(uint64_t position,int k){
+	//takes the position of the k-mer (unitig id,unitig position,orientation)
+	//return the k-mer at that position
+	int id_unitig_graph=(int)(position>>32);//the id of the unitig having the first occurence
+    int position_unitig=(int)((position>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
+	Unitig seq=unitigs[id_unitig_graph];
+	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
+	return kmer_in_graph;
 }

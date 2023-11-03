@@ -10,6 +10,3 @@
 [submodule "external/pthash"]
 	path = external/pthash
 	url = https://github.com/jermp/pthash.git
-[submodule "external/essentials"]
-	path = external/essentials
-	url = https://github.com/jermp/essentials.git

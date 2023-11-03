@@ -10,7 +10,7 @@ set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h)
+add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
 
 #adding the directory
 add_subdirectory(external/sparsehash)
@@ -43,6 +43,7 @@ else()
     message(FATAL_ERROR "Zstandard (zstd) not found.")
 endif(zstd_FOUND)
 target_link_libraries(${PROJECT_NAME} boost_serialization)
+target_link_libraries(${PROJECT_NAME} pthread)
 find_package(Boost REQUIRED COMPONENTS serialization)
 add_library(boost::serialization INTERFACE IMPORTED)
 set_target_properties(boost::serialization PROPERTIES

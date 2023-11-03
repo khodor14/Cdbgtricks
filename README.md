@@ -66,7 +66,9 @@ OR
 	--input_genome	 the path to the genome used to augment the input graph
 	--k_mer_size[-k] the size of the k-mer.
 			 It must be the same value used when constructing the input graph
+	--minimizer_size[-m] the size of the minimizer (m<k)
 	--k_mer_file	 the file of absent k-mers from the graph if already computed
+	--smallest_merge[-s]	 the threshold for merging buckets (all buckets below this threshold are merged)
 	--output_file_name[-o] the name of the output file
 	--update_index[-u] index the constructed funitigs
 	--load_index[-li] the path to the saved index
@@ -93,7 +95,6 @@ OR
 	 -ob	 output in binary format
 	--output_file_name[-o] the name of the output file
 	-v verbosity
-
 ```
 ### Examples
   1. **Update a compacted de bruijn graph from a kmer file**
