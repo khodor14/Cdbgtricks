@@ -565,7 +565,7 @@ void update_CdBG(Index_mphf& graph_index,GfaGraph& graph,std::unordered_map<int,
             Unitig middle=Unitig((pos+(int)(left_unused))%4,3-(next_pos+graph_index.get_k_length()-2+(int)(left_unused))%4,std::vector<uint8_t>(seq_bases.begin()+static_cast<int>(std::floor((pos + (int)(left_unused))/4)),seq_bases.begin()+1+static_cast<int>(std::floor((next_pos+graph_index.get_k_length()-2+ (int)(left_unused))/4))));
             graph.insert_unitig(new_id,middle);
             if(update_index){
-                graph_index.update_unitig(seq,new_id,current_id,pos,next_pos,true);
+                graph_index.update_unitig(seq,new_id,current_id,pos,next_pos-1,true);
             }
         }
         else{//take from pos to the end

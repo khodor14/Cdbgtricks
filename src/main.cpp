@@ -371,7 +371,7 @@ int main(int argc,char **argv){
             ind.build(g2);
         }
         else{
-            load_index((std::get<1>(arguments["outputfilename"])+"_index.bin"),ind);
+            load_index(std::get<1>(arguments["loadindex"]),ind);
         }
         auto end =std::chrono::steady_clock::now();
         float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
