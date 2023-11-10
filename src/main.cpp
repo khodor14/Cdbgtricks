@@ -12,7 +12,13 @@
 #include <cmath>
 #include "unitig.h"
 #include "index.hpp"
+#include "mapper.hpp"
 #include "../external/pthash/external/essentials/include/essentials.hpp"
+#ifndef KSEQ_INIT_READY
+#define KSEQ_INIT_READY
+#include "kseq.h"
+KSEQ_INIT(gzFile, gzread);
+#endif
 void show_usage(){
     std::cerr<<"Usage: ./ccdbgupdater [COMMAND] [PARAMETERS]"<<"\n\n"
             <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
@@ -289,6 +295,59 @@ void save_index(std::string filename,Index_mphf& ind){
 void load_index(std::string filename,Index_mphf& ind){
     essentials::load(ind,filename.c_str());
 }
+void map_and_write_res(std::string filename_in,std::string filename_out,float ratio,Index_mphf& ind,GfaGraph& graph){
+    Mapper map=Mapper(ratio);
+    FILE* fp = fopen(filename_in.c_str(), "r");
+	if(fp==0){
+		std::cerr<<"Couldn't open the file "<<filename_in<<std::endl;
+	}
+    
+    std::ofstream res_map_file;
+	std::ostream file_out(0);
+	res_map_file.open(filename_out.c_str());
+	file_out.rdbuf(res_map_file.rdbuf());
+	kseq_t* kseq;
+    kseq = kseq_init(gzopen(filename_in.c_str(),"r"));
+	while(kseq_read(kseq)>=0){
+		std::vector<bool> mapped=map.map_back(kseq->seq.s,ind,graph);//get the mapping of all k-mers, true if the kmer is mapped, false otherwise
+        file_out<<"> "<<kseq->comment.s<<"\n";//copying the header
+        if(mapped.size()==0){//the length of the read is less than k
+            file_out<<"Cannot be mapped, its length is less than "<<ind.get_k_length()<<"\n";
+        }
+        else{
+            int count_maping=0;
+            int count_cons=0;
+            int map_position=0;
+            int count_mapping_blocks=0;
+            for(int i=0;i<mapped.size();i++){
+                if(mapped[i]){
+                    count_maping++;
+                    count_cons++;
+                    if(i==mapped.size()-1){
+                        file_out<<map_position<<":"<<(map_position+count_cons-1);
+                    }
+                }
+                else{
+                    if(count_cons!=0){
+                        count_mapping_blocks++;
+                        file_out<<map_position<<":"<<(map_position+count_cons-1);
+                    }
+                    if(count_mapping_blocks>0 && i<mapped.size()-1 && mapped[i+1]){
+                            file_out<<","; 
+                    }
+                    count_cons=0;
+                    map_position=i+1;
+                }
+            }
+            if(count_maping==0){
+                file_out<<"0 k-mers found\n";
+            }
+            file_out<<"\n";
+        }
+
+    }
+	res_map_file.close();
+}
 int main(int argc,char **argv){
     //parse arguments
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
@@ -329,7 +388,6 @@ int main(int argc,char **argv){
     else{//update the graph
         std::unordered_map<uint64_t,bool> k_mer;
         //load the input graph
-        auto start_g=std::chrono::steady_clock::now();
         GfaGraph g;
         GfaGraph g2;//=g.LoadFromFile("bifrost_graph_101.fasta");
         if(std::get<0>(arguments["loadgraphbinary"])){
@@ -339,10 +397,6 @@ int main(int argc,char **argv){
         else{
             g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
         }
-        auto end_G=std::chrono::steady_clock::now();
-        std::cout<<"Time to load the graph is "<<std::chrono::duration_cast<std::chrono::nanoseconds>(end_G - start_g).count()*1e-9<<std::endl;
-        bool verbose=std::get<0>(arguments["verbosity"]);
-        float time_kmtricks=0;
         //if we don't have a kmerfile, then a genome is passed
         if(!std::get<0>(arguments["kmerfile"])){
             std::string input_to_kmtricks=std::get<1>(arguments["graphfile"]);
@@ -353,10 +407,7 @@ int main(int argc,char **argv){
             }
             //call kmtricks
             std::system("chmod +x ../src/utils.sh");
-            auto start=std::chrono::steady_clock::now();
             std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputfilename"])+".txt").c_str());
-            auto end =std::chrono::steady_clock::now();
-            time_kmtricks=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
             //load the absent k-mers found by kmtricks
             k_mer=createHashTable(std::get<1>(arguments["outputfilename"])+".txt");
         }
@@ -366,24 +417,18 @@ int main(int argc,char **argv){
         }
         //create the index of the graph
         Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,smallest_bucket_merge);//
-        auto start=std::chrono::steady_clock::now();
         if(!std::get<0>(arguments["loadindex"])){
             ind.build(g2);
         }
         else{
             load_index(std::get<1>(arguments["loadindex"]),ind);
         }
-        auto end =std::chrono::steady_clock::now();
-        float time_index = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
-        start=std::chrono::steady_clock::now();
+        std::cout<<"Index is created\n";
         //construct the funitigs from the absent kmers
         std::unordered_map<uint64_t,bool> candidate_splits;//save split info u id,position
         std::unordered_map<int,std::pair<int,int>> candidate_join;//save join id u->(funitig 1,funitig 2)
         std::unordered_map<int,std::pair<int,int>> funitigs_join;//save join id u->(funitig 1,funitig 2) 
         std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer,stoi(std::get<1>(arguments["kvalue"])),g2,candidate_splits,candidate_join,funitigs_join);   
-        std::unordered_map<uint64_t,std::vector<std::tuple<int,int,bool>>> f_index=index_constructed_unitigs(constrct_unitigs,31);  
-        end=std::chrono::steady_clock::now();
-        float time_construction=std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()*1e-9;
         update_CdBG(ind,g2,constrct_unitigs,candidate_splits,candidate_join,std::get<0>(arguments["verbosity"]),std::get<0>(arguments["updateindex"]));
         insert_funitigs(g2,constrct_unitigs);
         if(std::get<0>(arguments["updateindex"])){

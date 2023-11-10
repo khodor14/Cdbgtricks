@@ -20,3 +20,5 @@ uint64_t reverse_complement(const uint64_t kmer,const int k);
 uint64_t canonical_bits(const uint64_t kmer,const int k);
 bool is_canonical(const uint64_t kmer,const int k);
 uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m);
+uint64_t get_next_kmer(uint64_t kmer,char c,int k);
+uint64_t kmer_to_bits(std::string_view seq);

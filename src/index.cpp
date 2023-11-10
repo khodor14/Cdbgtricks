@@ -35,27 +35,49 @@ void Index_mphf::build(GfaGraph& graph){
 	}
     //go over unitigs
     for(auto node:graph.get_nodes()){
+        uint64_t pos_min=0;
         uint64_t kmer=node.second.get_ith_mer(0,k);//get the i-th mer
+        uint64_t min_seq=kmer&((0xffffffffffffffff<<(64-2*m))>>(64-2*m));//
+        uint64_t canon_min_seq;
+        int pos_min_seq=k-m;
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(kmer,k);//compute canonical k-mer and its orientation in graph
         uint64_t position=(uint64_t)node.first;//assign unitig id to position
         position=(position<<32)|std::get<1>(seq_data);//assign 0 as position in id and the computed orientation
-        uint64_t minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+        uint64_t minimizer=compute_minimizer_position(std::get<0>(seq_data),pos_min);
         *(minimizer_outs[minimizer])<<std::to_string(std::get<0>(seq_data))<<"\n";//write k-mer to temporary output file
         *(minimizer_outs[minimizer])<<std::to_string(position)<<"\n";//write k-mer position to output file
         all_mphfs[minimizer].mphf_size++;
         all_mphfs[minimizer].empty=false;
+        if(!std::get<1>(seq_data)){
+            pos_min=(k-m-pos_min)%(k-m);
+        }
        for(int i=1;i<node.second.unitig_length()-k+1;i++){
+            pos_min_seq++;
             kmer=node.second.get_next_mer(kmer,i,k);//compute next k-mer
+            seq_data=reverseComplementCanonical(kmer,k);//compute canonical form of k-mer and its orientation
+            min_seq=node.second.get_next_mer(min_seq,pos_min_seq,m);
+            canon_min_seq=canonical_bits(min_seq,m);
+            if(canon_min_seq<minimizer){
+                minimizer=canon_min_seq;
+                pos_min=i+k-m;
+            }
+            else{
+                if(i>pos_min){
+                    minimizer=compute_minimizer_position(std::get<0>(seq_data),pos_min);
+                if(!std::get<1>(seq_data)){
+                    pos_min=(k-m-pos_min)%(k-m);
+                }
+                    pos_min+=i;
+                }
+            }
             seq_data=reverseComplementCanonical(kmer,k);//compute canonical form of k-mer and its orientation
             position=(uint64_t)node.first;//assign unitig id to position
             position=(position<<32)|(i<<1)|std::get<1>(seq_data);//assign i as position in unitig and the computed orientation
-            minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
             *(minimizer_outs[minimizer])<<std::to_string(std::get<0>(seq_data))<<"\n";//write k-mer to temporary output file
             *(minimizer_outs[minimizer])<<std::to_string(position)<<"\n";//write k-mer position to output file
             all_mphfs[minimizer].mphf_size++;
             all_mphfs[minimizer].empty=false;
        }
-
     }
 	for (uint64_t i(0); i < minimizer_number; ++i) {
         if(all_mphfs[i].mphf_size<small_bucket_size){
@@ -76,12 +98,15 @@ void Index_mphf::create_mphfs(){
     config.seed=1234567890;
     std::vector<uint64_t> kmers_from_small_buckets;
     std::vector<uint64_t> positions_kmers;
+    int grouped=0;
+    int separated=0;
     for (uint64_t i(0); i < minimizer_number; ++i) {
         if(!all_mphfs[i].empty){
             //read the kmer file
             zstr::ifstream in("ccdbgupdater_out" + std::to_string(i) + ".gz");
             in.peek();
             if(all_mphfs[i].small){
+                grouped++;
                 while(not in.eof() and in.good()){
                     std::string line;
                     std::getline(in,line);
@@ -96,6 +121,7 @@ void Index_mphf::create_mphfs(){
                 }               
             }
             else{
+                separated++;
             uint64_t size=all_mphfs[i].mphf_size;
             std::vector<uint64_t> kmers(all_mphfs[i].mphf_size);
             std::vector<uint64_t> kmer_data(all_mphfs[i].mphf_size);
@@ -135,13 +161,14 @@ void Index_mphf::update(GfaGraph& graph){
     config.c = 6.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
-    config.verbose_output = false;
+    config.verbose_output = true;
     std::vector<uint64_t> kmers_from_small_buckets;
     std::vector<uint64_t> positions_kmers;
     for (uint64_t i(0); i < minimizer_number; ++i) {
         std::vector<uint64_t> kmers;
         std::vector<uint64_t> kmer_data;
         if(!all_mphfs[i].empty && all_mphfs[i].created){
+            std::unordered_map<uint64_t,bool> track_error;
             zstr::ifstream in("ccdbgupdater_out" + std::to_string(i) + ".gz");
             in.peek();
             if(all_mphfs[i].small){
@@ -160,9 +187,11 @@ void Index_mphf::update(GfaGraph& graph){
 
             }
             else{
+
                 int size=position_kmers[i].size();
                 for(int j=0;j<size;j++){
-                    kmers.push_back(graph.get_kmer(position_kmers[i][j],k));
+                    uint64_t k_track=canonical_bits(graph.get_kmer(position_kmers[i][j],k),k);
+                    kmers.push_back(k_track);
                     kmer_data.push_back(position_kmers[i][j]);
                 }
                 size_t j=size;
@@ -177,7 +206,7 @@ void Index_mphf::update(GfaGraph& graph){
                     uint64_t kmer_position=std::stoll(line);
                     kmers.push_back(kmer);
                     kmer_data.push_back(kmer_position);             
-                }
+                }      
                 all_mphfs[i].kmer_MPHF.build_in_internal_memory(kmers.begin(),kmers.size(),config);//build the mphf
                 rearrange_positions(all_mphfs[i].kmer_MPHF,kmers,kmer_data,i,false);//arrange the position of k-mers in unitig based on the indices computed by the mphf
             }
@@ -186,6 +215,7 @@ void Index_mphf::update(GfaGraph& graph){
             //add one more boolean to say it is created
         else if(all_mphfs[i].created){
                 //read the kmer file
+                all_mphfs[i].empty=false;
                 zstr::ifstream in("ccdbgupdater_out" + std::to_string(i) + ".gz");
                 in.peek();
                 if(all_mphfs[i].mphf_size<small_bucket_size){
@@ -251,27 +281,53 @@ void Index_mphf::extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& con
     int id=graph.get_max_node_id();
     //go over unitigs
     for(auto node:constructed_unitigs){
+        id++;
+        uint64_t pos_min=0;
         uint64_t kmer=node.second.get_ith_mer(0,k);//get the i-th mer
+        uint64_t min_seq=kmer&((0xffffffffffffffff<<(64-2*m))>>(64-2*m));//
+        uint64_t canon_min_seq;
+        int pos_min_seq=k-m;
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(kmer,k);//compute canonical k-mer and its orientation in graph
         uint64_t position=(uint64_t)id;//assign unitig id to position
         position=(position<<32)|std::get<1>(seq_data);//assign 0 as position in id and the computed orientation
-        uint64_t minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+        uint64_t minimizer=compute_minimizer_position(std::get<0>(seq_data),pos_min);
         *(minimizer_outs[minimizer])<<std::to_string(std::get<0>(seq_data))<<"\n";//write k-mer to temporary output file
         *(minimizer_outs[minimizer])<<std::to_string(position)<<"\n";//write k-mer position to output file
         all_mphfs[minimizer].mphf_size++;
+        all_mphfs[minimizer].created=true;
+        if(!std::get<1>(seq_data)){
+            pos_min=(k-m-pos_min)%(k-m);
+        }
        for(int i=1;i<node.second.unitig_length()-k+1;i++){
+            pos_min_seq++;
             kmer=node.second.get_next_mer(kmer,i,k);//compute next k-mer
+            seq_data=reverseComplementCanonical(kmer,k);//compute canonical form of k-mer and its orientation
+            min_seq=node.second.get_next_mer(min_seq,pos_min_seq,m);
+            canon_min_seq=canonical_bits(min_seq,m);
+            if(canon_min_seq<minimizer){
+                minimizer=canon_min_seq;
+                pos_min=i+k-m;
+            }
+            else{
+                if(i>pos_min){
+                    minimizer=compute_minimizer_position(std::get<0>(seq_data),pos_min);
+                if(!std::get<1>(seq_data)){
+                    pos_min=(k-m-pos_min)%(k-m);
+                }
+                    pos_min+=i;
+                }
+            }
             seq_data=reverseComplementCanonical(kmer,k);//compute canonical form of k-mer and its orientation
             position=(uint64_t)id;//assign unitig id to position
             position=(position<<32)|(i<<1)|std::get<1>(seq_data);//assign i as position in unitig and the computed orientation
-            minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
             *(minimizer_outs[minimizer])<<std::to_string(std::get<0>(seq_data))<<"\n";//write k-mer to temporary output file
             *(minimizer_outs[minimizer])<<std::to_string(position)<<"\n";//write k-mer position to output file
             all_mphfs[minimizer].mphf_size++;
             all_mphfs[minimizer].created=true;//to differentiate between mphf that should be created from those already created
        }
-
+       graph.insert_unitig(id,node.second);
     }
+    graph.set_max_node_id(id);
 	for (uint64_t i(0); i < minimizer_number; ++i) {
 		*minimizer_outs[i]<<std::flush;
 		delete (minimizer_outs[i]);
@@ -279,36 +335,63 @@ void Index_mphf::extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& con
 }
 void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_position,int ending_position,bool keep_orient){
         uint64_t kmer=seq.get_ith_mer(starting_position,k);//get the i-th mer
+        uint64_t pos_min=0;
+        uint64_t min_seq=kmer&((0xffffffffffffffff<<(64-2*m))>>(64-2*m));//
+        uint64_t canon_min_seq;
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(kmer,k);//compute canonical k-mer and its orientation in graph
         uint64_t position=(uint64_t)id;//assign unitig id to position
         position=(position<<32)|std::get<1>(seq_data);//assign 0 as position in id and the computed orientation
-        uint64_t minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+        uint64_t minimizer=compute_minimizer_position(kmer,pos_min);//compute minimizer
         uint64_t index_by_mphf;
+        int pos_min_seq=starting_position+k-m;
         //check first if the mphf is small (i.e grouped with other)
-        if(all_mphfs[minimizer].small){
+        /*if(all_mphfs[minimizer].small){
             index_by_mphf=mphf_grouped_buckets(std::get<0>(seq_data));
             position_kmers_small_buckets[index_by_mphf]=position;
         }
         else{
             index_by_mphf=all_mphfs[minimizer].kmer_MPHF(std::get<0>(seq_data));
             position_kmers[minimizer][index_by_mphf]=position;
+        }*/
+        std::cout<<pos_min<<" posmin\n";
+        if(!std::get<1>(seq_data)){
+            pos_min=(k-m-pos_min)%m;
         }
+        std::cout<<to_string(kmer,k)<<"    "<<to_string(minimizer,m)<<"    "<<to_string(min_seq,m)<<"    0"<<"    "<<pos_min<<"\n";
         uint64_t j=1;
        for(int i=starting_position+1;i<=ending_position;i++){
+            pos_min_seq++;
             kmer=seq.get_next_mer(kmer,i,k);//compute next k-mer
             seq_data=reverseComplementCanonical(kmer,k);//compute canonical form of k-mer and its orientation
+            min_seq=seq.get_next_mer(min_seq,pos_min_seq,m);
+            canon_min_seq=canonical_bits(min_seq,m);
+            if(canon_min_seq<minimizer){
+                std::cout<<"Found new minimizer\n";
+                minimizer=canon_min_seq;
+                pos_min=j+k-m;
+            }
+            else{
+                if(j>pos_min){
+                    std::cout<<"Recompute minimizer  "<<j<<"   "<<pos_min<<"\n";
+                    minimizer=compute_minimizer_position(std::get<0>(seq_data),pos_min);
+                    if(!std::get<1>(seq_data)){
+                        pos_min=(k-m-pos_min)%m;
+                    }
+                    pos_min+=j;
+                }
+            }
             position=(uint64_t)id;//assign unitig id to position
             position=(position<<32)|(j<<1)|std::get<1>(seq_data);//assign i as position in unitig and the computed orientation
-            minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+            std::cout<<to_string(kmer,k)<<"    "<<to_string(minimizer,m)<<"    "<<to_string(min_seq,m)<<"    "<<j<<"    "<<pos_min<<"\n";
             //check first if the mphf is small (i.e grouped with other)
-            if(all_mphfs[minimizer].small){
+            /*if(all_mphfs[minimizer].small){
                 index_by_mphf=mphf_grouped_buckets(std::get<0>(seq_data));
                 position_kmers_small_buckets[index_by_mphf]=position;
             }
             else{
                 index_by_mphf=all_mphfs[minimizer].kmer_MPHF(std::get<0>(seq_data));
                 position_kmers[minimizer][index_by_mphf]=position;
-            }
+            }*/
             j++;
        }
 }
@@ -323,4 +406,17 @@ void Index_mphf::rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,p
     if(!grouped){
         position_kmers[min_i]=kmer_pos;
     }
+}
+uint64_t Index_mphf::compute_minimizer_position(uint64_t kmer,uint64_t& position){
+    uint64_t res=0xffffffffffffffff;
+    position=0;
+    for(int i=0;i<k-m+1;i++){
+        uint64_t mini=(kmer&((0xffffffffffffffff<<(64-2*k+2*i))>>(64-2*k+2*i)))>>(2*k-2*m-2*i);
+        mini=canonical_bits(mini,m);
+        if(mini<=res){
+            res=mini;
+            position=i;
+        }
+    }
+    return res;
 }

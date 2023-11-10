@@ -44,6 +44,7 @@ public:
     void extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& constructed_unitigs,GfaGraph& graph);
     uint64_t kmer_position(uint64_t kmer);
     int get_k_length();
+    uint64_t compute_minimizer_position(uint64_t kmer,uint64_t &position);
     template <typename Visitor>
     void visit(Visitor& visitor) {
         visitor.visit(k);

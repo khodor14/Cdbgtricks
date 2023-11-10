@@ -240,3 +240,23 @@ uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m){
     }
     return canonical_bits(res,m);
 }
+uint64_t get_next_kmer(uint64_t kmer,char c,int k){
+    /*
+    takes a kmer in binary format and the next character c
+    it returns the next kmer in binary
+    */
+    uint64_t next_kmer=kmer&(0xffffffffffffffff>>(66-2*k));
+    next_kmer=(next_kmer<<2)|baseToInt(c);
+    return next_kmer;
+}
+uint64_t kmer_to_bits(std::string_view seq){
+    /*
+    convert kmer to 64 bits
+    */
+    std::uint64_t result=0;
+    for(int i=0;i<seq.size();i++){
+        result=result<<2;
+        result=result|baseToInt(seq[i]);
+    }
+    return result;
+}
