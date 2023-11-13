@@ -234,11 +234,12 @@ uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m){
     uint64_t res=0xffffffffffffffff;
     for(int i=0;i<k-m+1;i++){
         uint64_t mini=(kmer&((0xffffffffffffffff<<(64-2*k+2*i))>>(64-2*k+2*i)))>>(2*k-2*m-2*i);
-        if(mini<res){
+        mini=canonical_bits(mini,m);
+        if(mini<=res){
             res=mini;
         }
     }
-    return canonical_bits(res,m);
+    return res;
 }
 uint64_t get_next_kmer(uint64_t kmer,char c,int k){
     /*

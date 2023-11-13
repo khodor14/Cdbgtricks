@@ -337,6 +337,9 @@ uint64_t GfaGraph::get_kmer(uint64_t position,int k){
 	int id_unitig_graph=(int)(position>>32);//the id of the unitig having the first occurence
     int position_unitig=(int)((position>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
 	Unitig seq=unitigs[id_unitig_graph];
+	if(position_unitig>seq.unitig_length()-k){
+		std::cout<<"out of range\n";
+	}
 	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
 	return kmer_in_graph;
 }

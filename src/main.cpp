@@ -38,7 +38,8 @@ void show_usage(){
             <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer.\n\t\t\t It must be the same value used when constructing the input graph\n"
             <<"\t"<<"--minimizer_size[-m]"<<" the size of the minimizer (m<k)\n"
             <<"\t"<<"--k_mer_file"<<"\t the file of absent k-mers from the graph if already computed\n"
-            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for merging buckets (all buckets below this threshold are merged)\n"
+            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for merging buckets (all buckets with size smaller this threshold are merged)\n"
+            <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
             <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
             <<"\t"<<"--update_index[-u]"<<" index the constructed funitigs\n"
             <<"\t"<<"--load_index[-li]"<<" the path to the saved index\n"
@@ -245,6 +246,18 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
                 exit(0);
             } 
         }
+        else if(!strcmp(argv[i],"-l")||!strcmp(argv[i],"--log_super_bucket"))
+        {
+            if(i+1<argc){
+                arguments["logsupbucket"]=std::tuple<bool,std::string>(true,argv[i+1]);
+                i=i+1;
+            }
+            else{
+                std::cerr<<"the log2 of super bucket is missing, use --help or -h for details on how to use the program\n";
+                show_usage();
+                exit(0);
+            } 
+        }
         else if (!strcmp(argv[i],"--k_mer_file"))
         {
             if(i+1<argc){
@@ -353,15 +366,19 @@ int main(int argc,char **argv){
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     int minimizer_size=7;//default value
     int smallest_bucket_merge=500;//default value
+    int log_super_buckets=4;//log2 of the number of super buckets (number of files)
     if(std::get<0>(arguments["minimizer"])){
         minimizer_size=stoi(std::get<1>(arguments["minimizer"]));
     }
     if(std::get<0>(arguments["smallbucket"])){
         smallest_bucket_merge=stoi(std::get<1>(arguments["smallbucket"]));
     }
+    if(std::get<0>(arguments["logsupbucket"])){
+        log_super_buckets=stoi(std::get<1>(arguments["logsupbucket"]));
+    }
     if(!strcmp(std::get<1>(arguments["option"]).c_str(),"index")){
         GfaGraph g;
-        Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,smallest_bucket_merge);//
+        Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,log_super_buckets,smallest_bucket_merge);//
         if(std::get<0>(arguments["inputtext"])){
             GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
             ind.build(g2);
@@ -416,7 +433,7 @@ int main(int argc,char **argv){
             k_mer=createHashTable(std::get<1>(arguments["kmerfile"]));
         }
         //create the index of the graph
-        Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,smallest_bucket_merge);//
+        Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,log_super_buckets,smallest_bucket_merge);//
         if(!std::get<0>(arguments["loadindex"])){
             ind.build(g2);
         }
@@ -429,11 +446,14 @@ int main(int argc,char **argv){
         std::unordered_map<int,std::pair<int,int>> candidate_join;//save join id u->(funitig 1,funitig 2)
         std::unordered_map<int,std::pair<int,int>> funitigs_join;//save join id u->(funitig 1,funitig 2) 
         std::unordered_map<int,Unitig> constrct_unitigs=construct_unitigs_from_kmer(ind,k_mer,stoi(std::get<1>(arguments["kvalue"])),g2,candidate_splits,candidate_join,funitigs_join);   
+        std::cout<<"update positions "<<candidate_splits.size()<<"\n";
+        //update the graph using the split and join positions
         update_CdBG(ind,g2,constrct_unitigs,candidate_splits,candidate_join,std::get<0>(arguments["verbosity"]),std::get<0>(arguments["updateindex"]));
-        insert_funitigs(g2,constrct_unitigs);
         if(std::get<0>(arguments["updateindex"])){
-            ind.extract_kmers_from_funitigs(constrct_unitigs,g2);
-            ind.update(g2);
+            ind.update_index(constrct_unitigs,g2);
+        }
+        else{
+            insert_funitigs(g2,constrct_unitigs);
         }
         if(std::get<0>(arguments["outputindex"])){
             save_index(std::get<1>(arguments["outputfilename"])+"_index.bin",ind);

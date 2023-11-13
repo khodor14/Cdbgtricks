@@ -39,6 +39,11 @@ Installing ccdbupdater: Currently we have only the source version
   ```
 
 ## Binary usage:
+* First change the number of files that can be oppened
+
+  ```
+  ulimit -n 2000
+  ```
 
 ```
 ./ccdbgupdater
@@ -68,7 +73,8 @@ OR
 			 It must be the same value used when constructing the input graph
 	--minimizer_size[-m] the size of the minimizer (m<k)
 	--k_mer_file	 the file of absent k-mers from the graph if already computed
-	--smallest_merge[-s]	 the threshold for merging buckets (all buckets below this threshold are merged)
+	--smallest_merge[-s]	 the threshold for merging buckets (all buckets with size smaller this threshold are merged)
+	--log_super_bucket[-l]	 log2 of the number of files to be used
 	--output_file_name[-o] the name of the output file
 	--update_index[-u] index the constructed funitigs
 	--load_index[-li] the path to the saved index
