@@ -12,7 +12,7 @@ private:
     float ratio;
 public:
     Mapper(float r);    
-    std::vector<bool> map_back(const std::string_view seq,Index_mphf& graph_ind,GfaGraph& graph);
+    std::vector<int> map_back(const std::string_view seq,Index_mphf& graph_ind,GfaGraph& graph);
     ~Mapper()=default;
 };
 #endif // !index_mphf_H
