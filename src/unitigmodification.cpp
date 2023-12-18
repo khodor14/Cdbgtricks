@@ -529,6 +529,7 @@ void update_CdBG(Index_mphf& graph_index,GfaGraph& graph,std::unordered_map<int,
     int id=0;//its id
     bool first_split=true;//helpful to take the the prefix of the unitig
     int new_id=graph.get_max_node_id();
+    std::cout<<"splits "<<candidate_splits.size()<<"\n";
     for(int i=0;i<sorted_splits.size();i++){
         uint64_t split=sorted_splits[i];
         int current_id=split>>32;
