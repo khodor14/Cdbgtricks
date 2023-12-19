@@ -75,6 +75,7 @@ OR
 	--k_mer_file	 the file of absent k-mers from the graph if already computed
 	--smallest_merge[-s]	 the threshold for merging buckets (all buckets with size smaller this threshold are merged)
 	--log_super_bucket[-l]	 log2 of the number of files to be used
+	--multiplier_super_bucket[-msb]	 size of super-bucket in terms of small bucket
 	--output_file_name[-o] the name of the output file
 	--update_index[-u] index the constructed funitigs
 	--load_index[-li] the path to the saved index
@@ -87,6 +88,9 @@ OR
 	-h[--help]	 prints this help message
 	--input_graph[-ig]	 the path to the pangenome graph in gfa/fasta/binary format
 	--k_mer_size[-k] the size of the k-mer
+	--minimizer_size[-m] the size of the minimizer (m<k)
+	--smallest_merge[-s]	 the threshold for merging buckets (all buckets with size smaller this threshold are merged)
+	--log_super_bucket[-l]	 log2 of the number of files to be used
 	 -it	 the input is in text format (fasta/GFA)
 	 -ib	 the input is in binary format
 	--output_file_name[-o] the name of the output file
@@ -100,6 +104,21 @@ OR
 	 -of	 output in fasta format
 	 -ob	 output in binary format
 	--output_file_name[-o] the name of the output file
+	-v verbosity
+[PARAMETERS]: query
+
+	-h[--help]	 prints this help message
+	--input_graph[-ig]	 the path to the pangenome graph in gfa/fasta/binary format
+	--query_reads[-qr]	 the path to the to the read query set in fasta format
+	--k_mer_size[-k] the size of the k-mer
+	--minimizer_size[-m] the size of the minimizer (m<k)
+	--smallest_merge[-s]	 the threshold for merging buckets (all buckets with size smaller this threshold are merged)
+	--log_super_bucket[-l]	 log2 of the number of files to be used
+	 -it	 the input is in text format (fasta/GFA)
+	 -ib	 the input is in binary format
+	--load_index[-li] the path to the saved index
+	--ratio[-r]	 the ratio of read k-mers that should be found in the graph
+	--output_file_name[-o]the name of the output file
 	-v verbosity
 ```
 ### Examples
