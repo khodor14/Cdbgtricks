@@ -455,6 +455,7 @@ void Index_mphf::update_index(std::unordered_map<int,Unitig>& constructed_funiti
         merged_with_super_b=true;
         //add new super-keys to last super bucket
         for(auto minimizerData:kmers_new_super){
+            mphfs_info[minimizerData.first].bucket_id=last_super_bucket_id;
             for(auto superkey:minimizerData.second){
                 kmers_super_b_updates[last_super_bucket_id].push_back(superkey);
             }
@@ -466,27 +467,31 @@ void Index_mphf::update_index(std::unordered_map<int,Unitig>& constructed_funiti
     else if(num_new_kmers_new_supb>0){
         
         std::vector<std::tuple<uint64_t,uint64_t,uint64_t>> new_super_keys;
-        for(auto minimizerData:kmers_new_super){
-            for(auto superkey:minimizerData.second){
-                new_super_keys.push_back(superkey);
-            }
-        }
         //we add these k-mers to the smallest super bucket created
         if(smallest_super_bucket_id!=0xffffffffffffffff){
-            std::cout<<"merge k-mers with smallest super bucket \n";
+            for(auto minimizerData:kmers_new_super){
+                mphfs_info[minimizerData.first].bucket_id=smallest_super_bucket_id;
+                for(auto superkey:minimizerData.second){
+                    new_super_keys.push_back(superkey);
+                }
+            }
             update_super_bucket(graph,smallest_super_bucket_id,new_super_keys);
         }
         //we don't have super bucket in the index, so we add these k-mers to the smallest bucket and we create the first super bucket
         else
-        {   std::cout<<"merge k-mers with smallest bucket \n";
+        {   
+            for(auto minimizerData:kmers_new_super){
+                mphfs_info[minimizerData.first].bucket_id=smallest_bucket_id;
+                for(auto superkey:minimizerData.second){
+                    new_super_keys.push_back(superkey);
+                }
+            }
             update_super_bucket(graph,smallest_bucket_id,new_super_keys);
         }
     }
     if(!merged_with_super_b && last_super_bucket_id!=0xffffffffffffffff){
-        std::cout<<"recreate last super bucket \n";
         update_super_bucket(graph,last_super_bucket_id,kmers_super_b_updates[last_super_bucket_id]);
     }
-    std::cout<<"new total number of buckets is "<<all_mphfs.size()<<"\n";
 }
 void Index_mphf::extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& constructed_unitigs,GfaGraph& graph){
     std::vector<std::ostream*> minimizer_outs(number_of_super_buckets);//write k-mers per file
@@ -659,13 +664,13 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             uint64_t full_position=(id<<32)|(pos_in_unitig<<1)|std::get<1>(seq_data);
             Unitig seq=graph.get_unitig(id);
             kmers.push_back(std::get<0>(seq_data));
-            kmers.push_back(full_position);
+            positions.push_back(full_position);
             for(uint64_t i=1;i<counter;i++){
                 k_mer=seq.get_next_mer(k_mer,pos_in_unitig+i,k);
                 seq_data=reverseComplementCanonical(k_mer,k);
                 full_position=(id<<32)|((pos_in_unitig+i)<<1)|std::get<1>(seq_data);
                 kmers.push_back(std::get<0>(seq_data));
-                kmers.push_back(full_position);
+                positions.push_back(full_position);
             }
         }
         for(auto position:position_kmers[super_bucket_id]){
