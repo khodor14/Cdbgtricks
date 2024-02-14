@@ -790,7 +790,48 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
                 }
             }
         }
-        update_super_bucket(kmer_b_1,positions_b_1,minimizer_b_1,super_bucket_id);//create mphf for first super-bucket
-        create_mphf_per_super_bucket(kmer_b_2,positions_b_2,minimizer_b_2,all_mphfs.size());//create mphf for second super-bucket
+        bool singleton_b1=false;// we may get only one minimizer in b1 so we need to update the info in the index
+        bool singleton_b2=false;// we may get only one minimizer in b2 so we need to update the info in the index
+        //to create a mphf for b1 and for b2, their sizes must respect the threshold
+        if(kmer_b_1.size()>small_bucket_size && kmer_b_2.size()>small_bucket_size){
+            update_super_bucket(kmer_b_1,positions_b_1,minimizer_b_1,super_bucket_id);//create mphf for first super-bucket
+            create_mphf_per_super_bucket(kmer_b_2,positions_b_2,minimizer_b_2,all_mphfs.size());//create mphf for second super-bucket
+            if(minimizer_b_1.size()==1){
+                singleton_b1=true;
+            }
+            if(minimizer_b_2.size()==1){
+                singleton_b2=true;
+            }
+        }
+        // In case b1 does not respect the threshold strategy, we have to merge them again
+        else if(kmer_b_1.size()<kmer_b_2.size()){
+            for(int i=0;i<kmer_b_1.size();i++){
+                kmer_b_2.push_back(kmer_b_1[i]);
+                positions_b_2.push_back(positions_b_1[i]);
+            }
+            //
+            if(kmer_b_1.size()==0 && minimizer_b_2.size()==1){
+                singleton_b2=true;
+            }
+            update_super_bucket(kmer_b_2,positions_b_2,minimizer_b_2,super_bucket_id);//create mphf for first super-bucket
+        }
+        else{
+            for(int i=0;i<kmer_b_2.size();i++){
+                kmer_b_1.push_back(kmer_b_2[i]);
+                positions_b_1.push_back(positions_b_2[i]);
+            }
+            if(kmer_b_2.size()==0 && minimizer_b_1.size()==1){
+                singleton_b1=true;
+            }
+            update_super_bucket(kmer_b_1,positions_b_1,minimizer_b_1,super_bucket_id);//create mphf for second super-bucket
+        }
+        if(singleton_b1){
+            uint64_t single_minimizer_b1=*(minimizer_b_1.begin());
+            mphfs_info[single_minimizer_b1].small=false;
+        }
+        if(singleton_b2){
+            uint64_t single_minimizer_b2=*(minimizer_b_2.begin());
+            mphfs_info[single_minimizer_b2].small=false;
+        }
     }
 }
