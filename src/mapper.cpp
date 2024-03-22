@@ -30,7 +30,6 @@ std::vector<int> Mapper::map_back(const std::string_view seq,Index_mphf& graph_i
         res.push_back(0);
     }
     for(int i=k;i<seq.length();i++){
-        kmer=get_next_kmer(kmer,seq[i],k);//update the kmer
         canonical_kmer=canonical_bits(kmer,k);
         kmer_pos=graph_ind.kmer_position(canonical_kmer);
         pref_kmer=canonical_bits(kmer>>2,k-1);

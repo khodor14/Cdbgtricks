@@ -272,7 +272,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
         }
         else if(!strcmp(argv[i],"-r")||!strcmp(argv[i],"--ratio")){
             if(i+1<argc){
-                arguments["ratioquery"]=std::tuple<bool,std::string>(true,argv[i+1]);
+                arguments["ratio"]=std::tuple<bool,std::string>(true,argv[i+1]);
                 i=i+1;
             }
             else{
@@ -449,7 +449,6 @@ void map_and_write_res(std::string filename_in,std::string filename_out,float ra
 }
 int main(int argc,char **argv){
     //parse arguments
-    
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     int minimizer_size=7;//default value
     int smallest_bucket_merge=500;//default value
