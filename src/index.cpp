@@ -194,11 +194,10 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
     */
     //pthash configuration
     pthash::build_configuration config;
-    config.c = 6.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = false;
-    config.seed=1234567890;
+    config.c=6.0;
     for(auto minimizer_data:superkeys){
         if(mphfs_info[minimizer_data.first].mphf_size<small_bucket_size){
             mphfs_info[minimizer_data.first].small=true;
@@ -290,7 +289,7 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &kmers_super_b_updates,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> superkeys){
     pthash::build_configuration config;
-    config.c = 6.0;
+    config.c=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = false;
@@ -364,7 +363,7 @@ void Index_mphf::create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::
     //takes the k-mers, their positions and the minimizers of this super-bucket
     pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_super_bucket;
     pthash::build_configuration config;
-    config.c = 6.0;
+    config.c=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;// mphf
     config.verbose_output = false;
@@ -384,7 +383,7 @@ void Index_mphf::update_super_bucket(std::vector<uint64_t>& kmers,std::vector<ui
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
     pthash::build_configuration config;
-    config.c = 6.0;
+    config.c=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;// mphf
     config.verbose_output = false;
@@ -522,7 +521,7 @@ void Index_mphf::extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& con
         int counter=1;
         //when we have one kmer in the seq, write the data to the super-bucket
         if(node.second.unitig_length()==k){
-            //old_minimizer=revhash_min(old_minimizer)%minimizer_number;
+            old_minimizer=revhash_min(old_minimizer)%minimizer_number;
             *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(old_minimizer)<<"\n";//write minimizer to super bucket file
             *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(prev_kmer)<<"\n";//write k-mer position to output file
             *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(position)<<"\n";//write k-mer position to output file
@@ -534,23 +533,23 @@ void Index_mphf::extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& con
             kmer=node.second.get_next_mer(kmer,i,k);//compute next k-mer
             min_seq=node.second.get_next_mer(min_seq,pos_min_seq,m);
             canon_min_seq=canonical_bits(min_seq,m);
-            uint64_t new_h=unrevhash_min(min_seq);
-            if(new_h<hash_min){
+            uint64_t new_hash=unrevhash_min(canon_min_seq);
+            if(new_hash<hash_min){//new minimizer is found
                 minimizer=canon_min_seq;
-                hash_min=new_h;
+                hash_min=new_hash;
                 pos_min=i+k-m;
             }
             else{
-                if(i>pos_min){
+                if(i>pos_min){//the minimizer is outdated
                     minimizer=compute_minimizer_position(kmer,pos_min);
-                    pos_min+=i;
                     hash_min=unrevhash_min(minimizer);
+                    pos_min=pos_min+i;
                 }
             }
             if(revhash_min(minimizer)%minimizer_number==revhash_min(old_minimizer)%minimizer_number){
                 counter++;
                 if(i==node.second.unitig_length()-k){//when same minimizer and last kmer write everything to the superbucket
-                    //old_minimizer=revhash_min(old_minimizer)%minimizer_number;
+                    old_minimizer=revhash_min(old_minimizer)%minimizer_number;
                     *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(old_minimizer)<<"\n";//write minimizer to super bucket file
                     *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(prev_kmer)<<"\n";//write k-mer position to output file
                     *(minimizer_outs[old_minimizer/bucket_per_super_bucket])<<std::to_string(position)<<"\n";//write k-mer position to output file
@@ -593,7 +592,7 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
         std::tuple<uint64_t,bool> seq_data=reverseComplementCanonical(kmer,k);//compute canonical k-mer and its orientation in graph
         uint64_t position=(uint64_t)id;//assign unitig id to position
         position=(position<<32)|std::get<1>(seq_data);//assign 0 as position in id and the computed orientation
-        uint64_t minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+        uint64_t minimizer=compute_minimizer(kmer);//compute minimizer
         minimizer=revhash_min(minimizer)%minimizer_number;
         uint64_t bucket_id=mphfs_info[minimizer].bucket_id;
         uint64_t index_by_mphf=all_mphfs[bucket_id](std::get<0>(seq_data));
@@ -605,7 +604,7 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
             position=(uint64_t)id;//assign unitig id to position
             position=(position<<32)|(j<<1)|std::get<1>(seq_data);//assign i as position in unitig and the computed orientation
             //position=(position<<32)|(j<<1)|std::get<1>(seq_data);//assign i as position in unitig and the computed orientation
-            minimizer=compute_canonical_minimizer(std::get<0>(seq_data),k,m);//compute minimizer
+            minimizer=compute_minimizer(kmer);//compute minimizer
             minimizer=revhash_min(minimizer)%minimizer_number;
             bucket_id=mphfs_info[minimizer].bucket_id;
             index_by_mphf=all_mphfs[bucket_id](std::get<0>(seq_data));
@@ -641,6 +640,23 @@ uint64_t Index_mphf::compute_minimizer_position(uint64_t kmer,uint64_t& position
 		}
 	}
 	return mini;
+}
+uint64_t Index_mphf::compute_minimizer(uint64_t kmer){
+    uint64_t mini, mmer;
+	mmer = kmer%minimizer_number;//m-suffix of the k-mer
+	mini = mmer = canonical_bits(mmer, m);
+	uint64_t hash_mini=(unrevhash_min(mmer));//hash the minimizer
+	for (uint64_t i(1); i<=k-m; i++) {
+		kmer>>=2;
+		mmer=kmer%minimizer_number;
+		mmer=canonical_bits(mmer, m);
+		uint64_t hash=(unrevhash_min(mmer));
+		if (hash_mini>hash) {
+			mini=mmer;
+			hash_mini=hash;
+		}
+	}
+	return mini;    
 }
 void Index_mphf::update_all_super_buckets(GfaGraph& graph,std::unordered_map<uint64_t,
                                 std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> kmers_super_b_updates,
@@ -687,7 +703,7 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             kmers.push_back(canonical_bits(graph.get_kmer(position,k),k));
         }
         pthash::build_configuration config;
-        config.c = 6.0;
+        config.c=6.0;
         config.alpha = 0.94;
         config.minimal_output = true;// mphf
         config.verbose_output = false;
@@ -711,7 +727,7 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
         */
         for(auto pos_kmer:position_kmers[super_bucket_id]){
             uint64_t kmer=canonical_bits(graph.get_kmer(pos_kmer,k),k);
-            uint64_t minimizer=compute_canonical_minimizer(kmer,k,m);
+            uint64_t minimizer=compute_minimizer(kmer);
             minimizer=revhash_min(minimizer)%minimizer_number;
             if(minimizer_b_1.count(minimizer)>0){
                 kmer_b_1.push_back(kmer);
@@ -740,7 +756,7 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
         }
         for(auto super_key:new_super_keys){
             uint64_t k_mer=std::get<0>(super_key);
-            uint64_t minimizer=compute_canonical_minimizer(k_mer,k,m);
+            uint64_t minimizer=compute_minimizer(k_mer);
             minimizer=revhash_min(minimizer)%minimizer_number;
             uint64_t pos_kmer=std::get<1>(super_key);
             uint64_t counter=std::get<2>(super_key);

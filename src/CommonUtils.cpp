@@ -230,24 +230,6 @@ uint64_t canonical_bits(const uint64_t kmer,const int k){
 bool is_canonical(const uint64_t kmer,const int k){
     return kmer<reverse_complement(kmer,k);
 }
-uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m){
-    uint64_t mmer=(kmer&((0xffffffffffffffff<<(64-2*k))>>(64-2*k)))>>(2*k-2*m);
-    mmer=canonical_bits(mmer,m);
-    uint64_t mini=mmer;
-    uint64_t hash=unrevhash_min(mmer);
-    //position=0;
-    for(int i=1;i<k-m+1;i++){
-        mmer=(kmer&((0xffffffffffffffff<<(64-2*k+2*i))>>(64-2*k+2*i)))>>(2*k-2*m-2*i);
-        mmer=canonical_bits(mini,m);
-        uint64_t hash_min=unrevhash_min(mmer);
-        if(hash_min<=hash){
-            hash=hash_min;
-            mini=mmer;
-            //position=i;
-        }
-    }
-    return mini;
-}
 uint64_t get_next_kmer(uint64_t kmer,char c,int k){
     /*
     takes a kmer in binary format and the next character c

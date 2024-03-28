@@ -310,7 +310,6 @@ int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos
 	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
 	std::tuple<uint64_t,bool> kmer_query_canonical=reverseComplementCanonical(kmer,k);
 	std::tuple<uint64_t,bool> kmer_graph_canonical=reverseComplementCanonical(kmer_in_graph,k);
-
 	if(std::get<0>(kmer_query_canonical)==std::get<0>(kmer_graph_canonical)){
 		//the k-mer is in the graph
 		uint64_t pref_kmer=canonical_bits(kmer_in_graph>>2,k-1);

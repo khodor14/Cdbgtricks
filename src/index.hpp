@@ -72,6 +72,7 @@ public:
     uint64_t kmer_position(uint64_t kmer);
     int get_k_length();
     uint64_t compute_minimizer_position(uint64_t kmer,uint64_t &position);
+    uint64_t compute_minimizer(uint64_t kmer);
     void update_index(std::unordered_map<int,Unitig>& constructed_funitigs,GfaGraph& graph);
     template <typename Visitor>
     void visit(Visitor& visitor) {
