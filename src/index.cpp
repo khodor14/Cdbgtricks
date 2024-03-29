@@ -155,7 +155,8 @@ uint64_t Index_mphf::kmer_position(uint64_t kmer){
         return 0;//the mphf related to the minimizer of the k-mer is not yet created so the k-mer does not exist in the graph
     }
     uint64_t bucket_id=mphfs_info[minimizer].bucket_id;
-    return position_kmers[bucket_id][all_mphfs[bucket_id](kmer)];//postion of this k-mer in the graph
+    uint64_t h_val=all_mphfs[bucket_id].lookup(kmer)%position_kmers[bucket_id].size();//compute hash value and use module to capture out of range returned by bbhash
+    return position_kmers[bucket_id][h_val];//postion of this k-mer in the graph
 }
 void Index_mphf::read_super_file(std::string filename,std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &super_bucket_data){
     zstr::ifstream in(filename);
@@ -192,12 +193,6 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
         if the bucket is small => create the mphf
             else: group the kmers from small buckets
     */
-    //pthash configuration
-    pthash::build_configuration config;
-    config.alpha = 0.94;
-    config.minimal_output = true;  // mphf
-    config.verbose_output = false;
-    config.c=6.0;
     for(auto minimizer_data:superkeys){
         if(mphfs_info[minimizer_data.first].mphf_size<small_bucket_size){
             mphfs_info[minimizer_data.first].small=true;
@@ -258,8 +253,7 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
                     kmer_positions.push_back(full_position);
                 }
             }
-            pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> kmer_MPHF;
-            kmer_MPHF.build_in_internal_memory(minimizer_kmers.begin(),minimizer_kmers.size(),config);
+            MPHF kmer_MPHF=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
             uint64_t bucket_id=all_mphfs.size();
             all_mphfs.push_back(kmer_MPHF);
             mphfs_info[minimizer_data.first].bucket_id=bucket_id;
@@ -288,11 +282,6 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &kmers_new_super,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &kmers_super_b_updates,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> superkeys){
-    pthash::build_configuration config;
-    config.c=6.0;
-    config.alpha = 0.94;
-    config.minimal_output = true;  // mphf
-    config.verbose_output = false;
     for(auto minimizer_data:superkeys){
         if(mphfs_info[minimizer_data.first].small){
             uint64_t super_bucket_id=mphfs_info[minimizer_data.first].bucket_id;
@@ -343,15 +332,14 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
             }
             if(bucket_id==0xffffffffffffffff){//the minimizer is not seen yet and need to be added 
                 bucket_id=mphfs_info.size();
-                pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> kmer_MPHF;
-                kmer_MPHF.build_in_internal_memory(minimizer_kmers.begin(),minimizer_kmers.size(),config);
+                MPHF kmer_MPHF=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
                 all_mphfs.push_back(kmer_MPHF);
                 mphfs_info[minimizer_data.first].bucket_id=bucket_id;
                 position_kmers.push_back(std::vector<uint64_t>());
             }
             else{
                 //we already have this minimizer in the index, so we need to update the mphf of its bucket
-                all_mphfs[mphfs_info[minimizer_data.first].bucket_id].build_in_internal_memory(minimizer_kmers.begin(),minimizer_kmers.size(),config);
+                all_mphfs[mphfs_info[minimizer_data.first].bucket_id]=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
             }
             rearrange_positions(all_mphfs[bucket_id],minimizer_kmers,kmer_positions,bucket_id);
         }
@@ -361,16 +349,10 @@ template <typename T>
 void Index_mphf::create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
-    pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_super_bucket;
-    pthash::build_configuration config;
-    config.c=6.0;
-    config.alpha = 0.94;
-    config.minimal_output = true;// mphf
-    config.verbose_output = false;
+    MPHF mphf_super_bucket=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
     std::vector<uint64_t> rearranged_positions(kmers.size());
-    mphf_super_bucket.build_in_internal_memory(kmers.begin(),kmers.size(),config);
     for(uint64_t i=0;i<kmers.size();i++){
-        rearranged_positions[mphf_super_bucket(kmers[i])]=positions[i];
+        rearranged_positions[mphf_super_bucket.lookup(kmers[i])]=positions[i];
     }
     position_kmers.push_back(rearranged_positions);
     all_mphfs.push_back(mphf_super_bucket);
@@ -382,16 +364,11 @@ template <typename T>
 void Index_mphf::update_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
-    pthash::build_configuration config;
-    config.c=6.0;
-    config.alpha = 0.94;
-    config.minimal_output = true;// mphf
-    config.verbose_output = false;
     std::vector<uint64_t> rearranged_positions(kmers.size());
-    all_mphfs[bucket_id].build_in_internal_memory(kmers.begin(),kmers.size(),config);
-    pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_super_bucket=all_mphfs[bucket_id];
+    all_mphfs[bucket_id]=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
+    MPHF mphf_super_bucket=all_mphfs[bucket_id];
     for(uint64_t i=0;i<kmers.size();i++){
-        rearranged_positions[mphf_super_bucket(kmers[i])]=positions[i];
+        rearranged_positions[mphf_super_bucket.lookup(kmers[i])]=positions[i];
     }
     position_kmers[bucket_id]=rearranged_positions;
     for(uint64_t minimizer:track_minimizer){
@@ -595,7 +572,7 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
         uint64_t minimizer=compute_minimizer(kmer);//compute minimizer
         minimizer=revhash_min(minimizer)%minimizer_number;
         uint64_t bucket_id=mphfs_info[minimizer].bucket_id;
-        uint64_t index_by_mphf=all_mphfs[bucket_id](std::get<0>(seq_data));
+        uint64_t index_by_mphf=all_mphfs[bucket_id].lookup(std::get<0>(seq_data));
         position_kmers[bucket_id][index_by_mphf]=position;
         uint64_t j=1;
        for(int i=starting_position+1;i<=ending_position;i++){
@@ -607,7 +584,7 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
             minimizer=compute_minimizer(kmer);//compute minimizer
             minimizer=revhash_min(minimizer)%minimizer_number;
             bucket_id=mphfs_info[minimizer].bucket_id;
-            index_by_mphf=all_mphfs[bucket_id](std::get<0>(seq_data));
+            index_by_mphf=all_mphfs[bucket_id].lookup(std::get<0>(seq_data));
             position_kmers[bucket_id][index_by_mphf]=position;
             j++;
        }
@@ -615,10 +592,10 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
 int Index_mphf::get_k_length(){
     return k;
 }
-void Index_mphf::rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id){
+void Index_mphf::rearrange_positions(MPHF mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id){
     std::vector<uint64_t> kmer_pos(kmers.size());
     for(size_t i=0;i<kmers.size();i++){
-        kmer_pos[mphf_ref(kmers[i])]=positions[i];
+        kmer_pos[mphf_ref.lookup(kmers[i])]=positions[i];
     }
     position_kmers[bucket_id]=kmer_pos;
 }
@@ -702,12 +679,7 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             positions.push_back(position);
             kmers.push_back(canonical_bits(graph.get_kmer(position,k),k));
         }
-        pthash::build_configuration config;
-        config.c=6.0;
-        config.alpha = 0.94;
-        config.minimal_output = true;// mphf
-        config.verbose_output = false;
-        all_mphfs[super_bucket_id].build_in_internal_memory(kmers.begin(),kmers.size(),config);
+        all_mphfs[super_bucket_id]=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
         rearrange_positions(all_mphfs[super_bucket_id],kmers,positions,super_bucket_id);
     }
     //we do greedy split into two super-buckets
@@ -860,5 +832,80 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             uint64_t single_minimizer_b2=*(minimizer_b_2.begin());
             mphfs_info[single_minimizer_b2].small=false;
         }
+    }
+}
+void Index_mphf::save(std::string filename){
+    std::filebuf fb;
+	std::remove(filename.c_str());
+	fb.open(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+	zstr::ostream out(&fb);
+    out.write(reinterpret_cast<const char*>(&k), sizeof(k));
+    out.write(reinterpret_cast<const char*>(&m), sizeof(m));
+    out.write(reinterpret_cast<const char*>(&log2_super_bucket), sizeof(log2_super_bucket));
+    out.write(reinterpret_cast<const char*>(&small_bucket_size), sizeof(small_bucket_size));
+    out.write(reinterpret_cast<const char*>(&multiplier_bucketing), sizeof(multiplier_bucketing));
+    out.write(reinterpret_cast<const char*>(&super_bucket_max_size), sizeof(super_bucket_max_size));
+    out.write(reinterpret_cast<const char*>(&minimizer_number), sizeof(minimizer_number));
+    out.write(reinterpret_cast<const char*>(&bucket_per_super_bucket), sizeof(bucket_per_super_bucket));
+    out.write(reinterpret_cast<const char*>(&number_of_super_buckets), sizeof(number_of_super_buckets));
+    out.write(reinterpret_cast<const char*>(&num_sup_buckets), sizeof(num_sup_buckets));
+    out.write(reinterpret_cast<const char*>(&smallest_super_bucket_id), sizeof(smallest_super_bucket_id));
+    out.write(reinterpret_cast<const char*>(&smallest_super_bucket_size), sizeof(smallest_super_bucket_size));
+    out.write(reinterpret_cast<const char*>(&smallest_bucket_id), sizeof(smallest_bucket_id));
+    out.write(reinterpret_cast<const char*>(&smallest_bucket_size), sizeof(smallest_bucket_size));
+    for(uint64_t i=0;i<mphfs_info.size();i++){
+        out.write(reinterpret_cast<const char*>(&mphfs_info[i].bucket_id), sizeof(mphfs_info[i].bucket_id));
+        out.write(reinterpret_cast<const char*>(&mphfs_info[i].created), sizeof(mphfs_info[i].created));
+        out.write(reinterpret_cast<const char*>(&mphfs_info[i].empty), sizeof(mphfs_info[i].empty));
+        out.write(reinterpret_cast<const char*>(&mphfs_info[i].mphf_size), sizeof(mphfs_info[i].mphf_size));
+        out.write(reinterpret_cast<const char*>(&mphfs_info[i].small), sizeof(mphfs_info[i].small));
+    }
+    uint64_t num_mphf=all_mphfs.size();
+    out.write(reinterpret_cast<const char*>(&num_mphf), sizeof(num_mphf));
+    for(uint64_t i=0;i<all_mphfs.size();i++){
+        uint64_t num_positions=position_kmers[i].size();
+        out.write(reinterpret_cast<const char*>(&num_positions), sizeof(num_positions));
+        out.write(reinterpret_cast<char const*>(position_kmers[i].data()), (std::streamsize)(sizeof(position_kmers[i][0]) * num_positions));
+        all_mphfs[i].save(out);
+    }
+    out <<std::flush;
+	fb.close();
+
+}
+void Index_mphf::load(std::string filename){
+	zstr::ifstream in(filename);
+    in.read(reinterpret_cast<char*>(&k), sizeof(k));
+   in.read(reinterpret_cast<char*>(&m), sizeof(m));
+    in.read(reinterpret_cast<char*>(&log2_super_bucket), sizeof(log2_super_bucket));
+    in.read(reinterpret_cast<char*>(&small_bucket_size), sizeof(small_bucket_size));
+    in.read(reinterpret_cast<char*>(&multiplier_bucketing), sizeof(multiplier_bucketing));
+    in.read(reinterpret_cast<char*>(&super_bucket_max_size), sizeof(super_bucket_max_size));
+    in.read(reinterpret_cast<char*>(&minimizer_number), sizeof(minimizer_number));
+    in.read(reinterpret_cast<char*>(&bucket_per_super_bucket), sizeof(bucket_per_super_bucket));
+    in.read(reinterpret_cast<char*>(&number_of_super_buckets), sizeof(number_of_super_buckets));
+    in.read(reinterpret_cast<char*>(&num_sup_buckets), sizeof(num_sup_buckets));
+    in.read(reinterpret_cast<char*>(&smallest_super_bucket_id), sizeof(smallest_super_bucket_id));
+    in.read(reinterpret_cast<char*>(&smallest_super_bucket_size), sizeof(smallest_super_bucket_size));
+    in.read(reinterpret_cast<char*>(&smallest_bucket_id), sizeof(smallest_bucket_id));
+    in.read(reinterpret_cast<char*>(&smallest_bucket_size), sizeof(smallest_bucket_size));
+    mphfs_info.resize(minimizer_number);
+    for(uint64_t i=0;i<mphfs_info.size();i++){
+        in.read(reinterpret_cast<char*>(&mphfs_info[i].bucket_id), sizeof(mphfs_info[i].bucket_id));
+        in.read(reinterpret_cast<char*>(&mphfs_info[i].created), sizeof(mphfs_info[i].created));
+        in.read(reinterpret_cast<char*>(&mphfs_info[i].empty), sizeof(mphfs_info[i].empty));
+        in.read(reinterpret_cast<char*>(&mphfs_info[i].mphf_size), sizeof(mphfs_info[i].mphf_size));
+        in.read(reinterpret_cast<char*>(&mphfs_info[i].small), sizeof(mphfs_info[i].small));
+    }
+    uint64_t num_mphf;
+    in.read(reinterpret_cast<char*>(&num_mphf), sizeof(num_mphf));
+    all_mphfs.resize(num_mphf);
+    position_kmers.resize(num_mphf);
+    for(uint64_t i=0;i<all_mphfs.size();i++){
+        uint64_t num_positions=position_kmers[i].size();
+		uint64_t sizer;
+		in.read(reinterpret_cast<char *>(&sizer),  sizeof(size_t));
+		position_kmers[i].resize(sizer);
+		in.read(reinterpret_cast<char*>(position_kmers[i].data()), (std::streamsize)(sizeof(position_kmers[i][0]) * sizer));
+        all_mphfs[i].load(in);
     }
 }

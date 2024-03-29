@@ -13,7 +13,6 @@
 #include "unitig.h"
 #include "index.hpp"
 #include "mapper.hpp"
-#include "../external/pthash/external/essentials/include/essentials.hpp"
 #include <gtest/gtest.h>
 #ifndef KSEQ_INIT_READY
 #define KSEQ_INIT_READY
@@ -367,12 +366,6 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
 
     return arguments;
 }
-void save_index(std::string filename,Index_mphf& ind){
-    essentials::save(ind,filename.c_str());
-}
-void load_index(std::string filename,Index_mphf& ind){
-    essentials::load(ind,filename.c_str());
-}
 void map_and_write_res(std::string filename_in,std::string filename_out,float ratio,Index_mphf& ind,GfaGraph& graph){
     Mapper map=Mapper(ratio);
     FILE* fp = fopen(filename_in.c_str(), "r");
@@ -472,12 +465,12 @@ int main(int argc,char **argv){
         if(std::get<0>(arguments["inputtext"])){
             GfaGraph g2=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
             ind.build(g2);
-            save_index((std::get<1>(arguments["outputfilename"])+"_index.bin"),ind);
+            ind.save((std::get<1>(arguments["outputfilename"])+"_index.bin"));
         }
         else if(std::get<0>(arguments["inputbinary"])){
             g.deserialize(std::get<1>(arguments["graphfile"]));
             ind.build(g);
-            save_index((std::get<1>(arguments["outputfilename"])+"_index.bin"),ind);
+            ind.save((std::get<1>(arguments["outputfilename"])+"_index.bin"));
         }        
     }
     else if(!strcmp(std::get<1>(arguments["option"]).c_str(),"convert"))
@@ -505,7 +498,7 @@ int main(int argc,char **argv){
             ind.build(g);
         }
         else{
-            load_index(std::get<1>(arguments["loadindex"]),ind);
+            ind.load(std::get<1>(arguments["loadindex"]));
         }
         map_and_write_res(std::get<1>(arguments["queryreads"]),std::get<1>(arguments["outputfilename"])+".txt",std::stof(std::get<1>(arguments["ratio"])),ind,g);
     }
@@ -545,7 +538,7 @@ int main(int argc,char **argv){
             ind.build(g2);
         }
         else{
-            load_index(std::get<1>(arguments["loadindex"]),ind);
+            ind.load(std::get<1>(arguments["loadindex"]));
         }
         std::cout<<"Index is created\n";
         //construct the funitigs from the absent kmers
@@ -563,7 +556,7 @@ int main(int argc,char **argv){
             insert_funitigs(g2,constrct_unitigs);
         }
         if(std::get<0>(arguments["outputindex"])){
-            save_index(std::get<1>(arguments["outputfilename"])+"_index.bin",ind);
+            ind.save(std::get<1>(arguments["outputfilename"])+"_index.bin");
         }
         if(std::get<0>(arguments["outputgraphbinary"])){
             g2.serialize(std::get<1>(arguments["outputfilename"])+"_graph.bin");

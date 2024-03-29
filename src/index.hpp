@@ -4,22 +4,17 @@
 #include "CommonUtils.h"
 #include "ParseGFA.h"
 #include <vector>
-#include "../external/pthash/include/pthash.hpp"
 #include <ankerl/unordered_dense.h>
 #include "zstr.hpp"
+#include "BooPHF.h"
+typedef boomphf::SingleHashFunctor<uint64_t> hasher_t;
+typedef boomphf::mphf<uint64_t, hasher_t> MPHF;
 struct minimizer_info {
 	uint64_t mphf_size;
     uint64_t bucket_id;
     bool small;
     bool empty;
     bool created;
-    template <typename Visitor>
-    void visit(Visitor& visitor){
-        visitor.visit(mphf_size);
-        visitor.visit(bucket_id);
-        visitor.visit(empty);
-        visitor.visit(created);
-    }
 };
 class Index_mphf
 {
@@ -39,14 +34,14 @@ private:
     uint64_t smallest_bucket_id=0xffffffffffffffff;
     uint64_t smallest_bucket_size=0xffffffffffffffff;
     std::vector<minimizer_info> mphfs_info;
-    std::vector<pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true>> all_mphfs;
+    std::vector<MPHF> all_mphfs;
     std::vector<std::vector<uint64_t>> position_kmers;
     template <typename T>
     void create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,const T& track_minimizer,uint64_t bucket_id);
     template <typename T>
     void update_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,const T& track_minimizer,uint64_t bucket_id);
     void create_mphfs();
-    void rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id);
+    void rearrange_positions(MPHF mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id);
     void prepare_super_buckets(GfaGraph& graph);
     void read_super_file(std::string filename,std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &super_bucket_data);
     void read_super_buckets(GfaGraph& graph,std::vector<uint64_t> &kmers,std::vector<uint64_t>& positions,
@@ -74,26 +69,8 @@ public:
     uint64_t compute_minimizer_position(uint64_t kmer,uint64_t &position);
     uint64_t compute_minimizer(uint64_t kmer);
     void update_index(std::unordered_map<int,Unitig>& constructed_funitigs,GfaGraph& graph);
-    template <typename Visitor>
-    void visit(Visitor& visitor) {
-        visitor.visit(k);
-        visitor.visit(m);
-        visitor.visit(small_bucket_size);
-        visitor.visit(log2_super_bucket);
-        visitor.visit(multiplier_bucketing);
-        visitor.visit(bucket_per_super_bucket);
-        visitor.visit(number_of_super_buckets);
-        visitor.visit(minimizer_number);
-        visitor.visit(super_bucket_max_size);
-        visitor.visit(num_sup_buckets);
-        visitor.visit(smallest_bucket_id);
-        visitor.visit(smallest_bucket_size);
-        visitor.visit(smallest_super_bucket_id);
-        visitor.visit(smallest_super_bucket_size);
-        visitor.visit(mphfs_info);
-        visitor.visit(all_mphfs);
-        visitor.visit(position_kmers);
-    }
+    void save(std::string filename);
+    void load(std::string filename);
     ~Index_mphf()=default;
 };
 #endif // !index_mphf_H
