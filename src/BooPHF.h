@@ -887,8 +887,8 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		
 		// allow perc_elem_loaded  elements to be loaded in ram for faster construction (default 3%), set to 0 to desactivate
 		template <typename Range>
-		mphf( size_t n, Range const& input_range,int num_thread = 1,  double gamma = 2.0 , bool writeEach = true, bool progress =true, float perc_elem_loaded = 0.03) :
-		_gamma(gamma), _hash_domain(size_t(ceil(double(n) * gamma))), _nelem(n), _num_thread(num_thread), _percent_elem_loaded_for_fastMode (perc_elem_loaded), _withprogress(progress)
+		mphf( size_t n, Range const& input_range,int num_thread = 1,  double gamma = 2.0 , bool writeEach = true, bool progress =true, float perc_elem_loaded = 0.03,int level=25) :
+		_gamma(gamma), _hash_domain(size_t(ceil(double(n) * gamma))), _nelem(n), _num_thread(num_thread), _percent_elem_loaded_for_fastMode (perc_elem_loaded), _withprogress(progress),_nb_levels(level)
 		{
 			if(n ==0) return;
 			
@@ -1281,7 +1281,6 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 			double sum_geom =_gamma * ( 1.0 +  _proba_collision / (1.0 - _proba_collision));
 			//printf("proba collision %f  sum_geom  %f   \n",_proba_collision,sum_geom);
 
-			_nb_levels = 25;
 			_levels.resize(_nb_levels);
 
 			//build levels

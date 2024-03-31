@@ -9,7 +9,7 @@ project(ccdbgupdater VERSION 0.1.0)
 set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/BooPHF.h src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
 #add_executable(unit_test test/test_main.cpp test/test_common.cpp)
 #adding the directory
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNIT_TEST=1)
