@@ -253,9 +253,8 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
                     kmer_positions.push_back(full_position);
                 }
             }
-            MPHF kmer_MPHF=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
             uint64_t bucket_id=all_mphfs.size();
-            all_mphfs.push_back(kmer_MPHF);
+            compute_mphf_per_bucket(bucket_id,minimizer_kmers,false);
             mphfs_info[minimizer_data.first].bucket_id=bucket_id;
             //finding smallest bucket id
             if(kmer_positions.size()<smallest_bucket_size){
@@ -263,7 +262,7 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
                 smallest_bucket_id=bucket_id;
             }
             position_kmers.push_back(std::vector<uint64_t>());//push back an empty vector
-            rearrange_positions(kmer_MPHF,minimizer_kmers,kmer_positions,bucket_id);
+            rearrange_positions(all_mphfs[bucket_id],minimizer_kmers,kmer_positions,bucket_id);
         }
     }
 }
@@ -332,14 +331,13 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
             }
             if(bucket_id==0xffffffffffffffff){//the minimizer is not seen yet and need to be added 
                 bucket_id=mphfs_info.size();
-                MPHF kmer_MPHF=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
-                all_mphfs.push_back(kmer_MPHF);
+                compute_mphf_per_bucket(bucket_id,minimizer_kmers,false);
                 mphfs_info[minimizer_data.first].bucket_id=bucket_id;
                 position_kmers.push_back(std::vector<uint64_t>());
             }
             else{
                 //we already have this minimizer in the index, so we need to update the mphf of its bucket
-                all_mphfs[mphfs_info[minimizer_data.first].bucket_id]=boomphf::mphf<uint64_t,hasher_t>(minimizer_kmers.size(),minimizer_kmers);
+                compute_mphf_per_bucket(mphfs_info[minimizer_data.first].bucket_id,minimizer_kmers,true);
             }
             rearrange_positions(all_mphfs[bucket_id],minimizer_kmers,kmer_positions,bucket_id);
         }
@@ -349,13 +347,14 @@ template <typename T>
 void Index_mphf::create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
-    MPHF mphf_super_bucket=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
+    uint64_t b_id=all_mphfs.size();
+    compute_mphf_per_bucket(b_id,kmers,false);
+    MPHF mphf_super_bucket=all_mphfs[b_id];
     std::vector<uint64_t> rearranged_positions(kmers.size());
     for(uint64_t i=0;i<kmers.size();i++){
         rearranged_positions[mphf_super_bucket.lookup(kmers[i])]=positions[i];
     }
     position_kmers.push_back(rearranged_positions);
-    all_mphfs.push_back(mphf_super_bucket);
     for(uint64_t minimizer:track_minimizer){
         mphfs_info[minimizer].bucket_id=bucket_id;
     }
@@ -365,7 +364,7 @@ void Index_mphf::update_super_bucket(std::vector<uint64_t>& kmers,std::vector<ui
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
     std::vector<uint64_t> rearranged_positions(kmers.size());
-    all_mphfs[bucket_id]=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
+    compute_mphf_per_bucket(bucket_id,kmers,true);
     MPHF mphf_super_bucket=all_mphfs[bucket_id];
     for(uint64_t i=0;i<kmers.size();i++){
         rearranged_positions[mphf_super_bucket.lookup(kmers[i])]=positions[i];
@@ -599,6 +598,42 @@ void Index_mphf::rearrange_positions(MPHF mphf_ref,std::vector<uint64_t> kmers,s
     }
     position_kmers[bucket_id]=kmer_pos;
 }
+void Index_mphf::compute_mphf_per_bucket(uint64_t bucket_id,std::vector<uint64_t> kmers,bool recompute){
+    int level=25;//default level
+    double gamma=2.0;//default gamma
+    uint64_t size=kmers.size();
+    /*
+        based on the simulation, we adapt the level wrt to the size of the bucket
+    */
+    if(size<=8000){
+        level=5;
+        gamma=5.0;
+    }
+    else if (size<=20000)
+    {
+        level=5;
+        gamma=3.0;
+    }
+    else if (size<=40000)
+    {
+        level=15;
+    }
+    else if (size<=100000)
+    {
+        level=10;
+    }
+    else if (size<=400000)
+    {
+        level=20;
+    }
+    if(recompute){
+        all_mphfs[bucket_id]=boomphf::mphf<uint64_t,hasher_t>(size,kmers,1,gamma,true,false,0.03,level);
+    }
+    else{
+        all_mphfs.push_back(boomphf::mphf<uint64_t,hasher_t>(size,kmers,1,gamma,true,false,0.03,level));
+    }
+
+}
 uint64_t Index_mphf::compute_minimizer_position(uint64_t kmer,uint64_t& position){
     uint64_t mini, mmer;
 	mmer = kmer%minimizer_number;//m-suffix of the k-mer
@@ -679,7 +714,7 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             positions.push_back(position);
             kmers.push_back(canonical_bits(graph.get_kmer(position,k),k));
         }
-        all_mphfs[super_bucket_id]=boomphf::mphf<uint64_t,hasher_t>(kmers.size(),kmers);
+        compute_mphf_per_bucket(super_bucket_id,kmers,true);
         rearrange_positions(all_mphfs[super_bucket_id],kmers,positions,super_bucket_id);
     }
     //we do greedy split into two super-buckets

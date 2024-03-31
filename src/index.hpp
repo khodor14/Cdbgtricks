@@ -58,6 +58,7 @@ private:
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> superkeys);
     void update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>> &new_super_keys);
     void update_all_super_buckets(GfaGraph& graph,std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> kmers_super_b_updates,uint64_t last_super_bucket_id);
+    void compute_mphf_per_bucket(uint64_t bucket_id,std::vector<uint64_t> kmers,bool recompute);
 public:
     Index_mphf()=default;
     Index_mphf(size_t k_size,size_t m_size,size_t log_super_bucket,size_t small_b_size,size_t multiplier_bucket);
