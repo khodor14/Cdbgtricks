@@ -10,7 +10,6 @@ set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 #adding the executable
 add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
-#add_executable(unit_test test/test_main.cpp test/test_common.cpp)
 #adding the directory
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNIT_TEST=1)
 add_subdirectory(external/googletests)
@@ -18,12 +17,20 @@ target_include_directories(${PROJECT_NAME}
     #PUBLIC src
     PUBLIC external/boost
     PUBLIC external/unordered_dense
+    PUBLIC external/pthash
+    PUBLIC external/pthash/include
+    PUBLIC external/pthash/external/xxHash
+    PUBLIC external/pthash/external/essentials/include
 )
 #linking to directories
 target_link_directories(${PROJECT_NAME}
     #PRIVATE src
     PRIVATE external/boost
     PRIVATE external/unordered_dense
+    PRIVATE external/pthash
+    PRIVATE external/pthash/include
+    PRIVATE external/pthash/external/xxHash
+    PRIVATE external/pthash/external/essentials/include
 )
 find_package(ZLIB REQUIRED)
 target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})

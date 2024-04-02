@@ -1,3 +1,5 @@
+#ifndef ParseGFA_H
+#define ParseGFA_H
 #include <vector>
 #include <fstream>
 #include <string>
@@ -8,9 +10,6 @@
 #include "unitig.h"
 #include "FileSerializer.hpp"
 #include "CommonUtils.h"
-#ifndef ParseGFA_H
-#define ParseGFA_H
-
 class Node
 {
 private:

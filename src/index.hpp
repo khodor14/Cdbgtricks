@@ -1,11 +1,9 @@
-#ifndef index_mphf_H
-#define index_mphf_H
+#pragma once
 #include <string>
 #include "CommonUtils.h"
 #include "ParseGFA.h"
 #include <vector>
-#include "../external/pthash/include/pthash.hpp"
-#include <ankerl/unordered_dense.h>
+#include <pthash.hpp>
 #include "zstr.hpp"
 struct minimizer_info {
 	uint64_t mphf_size;
@@ -39,14 +37,14 @@ private:
     uint64_t smallest_bucket_id=0xffffffffffffffff;
     uint64_t smallest_bucket_size=0xffffffffffffffff;
     std::vector<minimizer_info> mphfs_info;
-    std::vector<pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true>> all_mphfs;
+    std::vector<pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement>> all_mphfs;
     std::vector<std::vector<uint64_t>> position_kmers;
     template <typename T>
     void create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,const T& track_minimizer,uint64_t bucket_id);
     template <typename T>
     void update_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,const T& track_minimizer,uint64_t bucket_id);
     void create_mphfs();
-    void rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id);
+    void rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id);
     void prepare_super_buckets(GfaGraph& graph);
     void read_super_file(std::string filename,std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &super_bucket_data);
     void read_super_buckets(GfaGraph& graph,std::vector<uint64_t> &kmers,std::vector<uint64_t>& positions,
@@ -96,4 +94,4 @@ public:
     }
     ~Index_mphf()=default;
 };
-#endif // !index_mphf_H
+//#endif // !index_mphf_H

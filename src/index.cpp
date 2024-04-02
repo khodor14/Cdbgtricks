@@ -155,7 +155,8 @@ uint64_t Index_mphf::kmer_position(uint64_t kmer){
         return 0;//the mphf related to the minimizer of the k-mer is not yet created so the k-mer does not exist in the graph
     }
     uint64_t bucket_id=mphfs_info[minimizer].bucket_id;
-    return position_kmers[bucket_id][all_mphfs[bucket_id](kmer)];//postion of this k-mer in the graph
+    uint64_t h_val=all_mphfs[bucket_id](kmer);//compute hash value and use module to capture out of range returned by bbhash
+    return position_kmers[bucket_id][h_val];//postion of this k-mer in the graph
 }
 void Index_mphf::read_super_file(std::string filename,std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &super_bucket_data){
     zstr::ifstream in(filename);
@@ -197,7 +198,8 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = false;
-    config.c=6.0;
+    config.search=pthash::add_displacement;
+    config.lambda=6.0;
     for(auto minimizer_data:superkeys){
         if(mphfs_info[minimizer_data.first].mphf_size<small_bucket_size){
             mphfs_info[minimizer_data.first].small=true;
@@ -258,7 +260,7 @@ void Index_mphf::create_mphf(std::vector<uint64_t>& kmers,std::vector<uint64_t>&
                     kmer_positions.push_back(full_position);
                 }
             }
-            pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> kmer_MPHF;
+            pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> kmer_MPHF;
             kmer_MPHF.build_in_internal_memory(minimizer_kmers.begin(),minimizer_kmers.size(),config);
             uint64_t bucket_id=all_mphfs.size();
             all_mphfs.push_back(kmer_MPHF);
@@ -289,10 +291,11 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> &kmers_super_b_updates,
                                 std::unordered_map<uint64_t,std::vector<std::tuple<uint64_t,uint64_t,uint64_t>>> superkeys){
     pthash::build_configuration config;
-    config.c=6.0;
+    config.lambda=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;  // mphf
     config.verbose_output = false;
+    config.search=pthash::add_displacement;
     for(auto minimizer_data:superkeys){
         if(mphfs_info[minimizer_data.first].small){
             uint64_t super_bucket_id=mphfs_info[minimizer_data.first].bucket_id;
@@ -342,8 +345,7 @@ void Index_mphf::update_mphfs(GfaGraph& graph, uint64_t &num_new_kmers_new_supb,
                 }
             }
             if(bucket_id==0xffffffffffffffff){//the minimizer is not seen yet and need to be added 
-                bucket_id=mphfs_info.size();
-                pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> kmer_MPHF;
+                pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> kmer_MPHF;
                 kmer_MPHF.build_in_internal_memory(minimizer_kmers.begin(),minimizer_kmers.size(),config);
                 all_mphfs.push_back(kmer_MPHF);
                 mphfs_info[minimizer_data.first].bucket_id=bucket_id;
@@ -361,12 +363,13 @@ template <typename T>
 void Index_mphf::create_mphf_per_super_bucket(std::vector<uint64_t>& kmers,std::vector<uint64_t>& positions,
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
-    pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_super_bucket;
+    pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> mphf_super_bucket;
     pthash::build_configuration config;
-    config.c=6.0;
+    config.lambda=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;// mphf
     config.verbose_output = false;
+    config.search=pthash::add_displacement;
     std::vector<uint64_t> rearranged_positions(kmers.size());
     mphf_super_bucket.build_in_internal_memory(kmers.begin(),kmers.size(),config);
     for(uint64_t i=0;i<kmers.size();i++){
@@ -383,13 +386,14 @@ void Index_mphf::update_super_bucket(std::vector<uint64_t>& kmers,std::vector<ui
         const T& track_minimizer,uint64_t bucket_id){
     //takes the k-mers, their positions and the minimizers of this super-bucket
     pthash::build_configuration config;
-    config.c=6.0;
+    config.lambda=6.0;
     config.alpha = 0.94;
     config.minimal_output = true;// mphf
     config.verbose_output = false;
+    config.search=pthash::add_displacement;
     std::vector<uint64_t> rearranged_positions(kmers.size());
     all_mphfs[bucket_id].build_in_internal_memory(kmers.begin(),kmers.size(),config);
-    pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_super_bucket=all_mphfs[bucket_id];
+    pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> mphf_super_bucket=all_mphfs[bucket_id];
     for(uint64_t i=0;i<kmers.size();i++){
         rearranged_positions[mphf_super_bucket(kmers[i])]=positions[i];
     }
@@ -615,7 +619,7 @@ void Index_mphf::update_unitig(Unitig seq,int id,int previous_id,int starting_po
 int Index_mphf::get_k_length(){
     return k;
 }
-void Index_mphf::rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::dictionary_dictionary,true> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id){
+void Index_mphf::rearrange_positions(pthash::single_phf<pthash::murmurhash2_64,pthash::skew_bucketer,pthash::dictionary_dictionary,true,pthash::add_displacement> mphf_ref,std::vector<uint64_t> kmers,std::vector<uint64_t> positions,uint64_t bucket_id){
     std::vector<uint64_t> kmer_pos(kmers.size());
     for(size_t i=0;i<kmers.size();i++){
         kmer_pos[mphf_ref(kmers[i])]=positions[i];
@@ -703,10 +707,11 @@ void Index_mphf::update_super_bucket(GfaGraph& graph,uint64_t super_bucket_id,st
             kmers.push_back(canonical_bits(graph.get_kmer(position,k),k));
         }
         pthash::build_configuration config;
-        config.c=6.0;
+        config.lambda=6.0;
         config.alpha = 0.94;
         config.minimal_output = true;// mphf
         config.verbose_output = false;
+        config.search=pthash::add_displacement;
         all_mphfs[super_bucket_id].build_in_internal_memory(kmers.begin(),kmers.size(),config);
         rearrange_positions(all_mphfs[super_bucket_id],kmers,positions,super_bucket_id);
     }

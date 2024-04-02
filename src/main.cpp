@@ -14,7 +14,6 @@
 #include "index.hpp"
 #include "mapper.hpp"
 #include "../external/pthash/external/essentials/include/essentials.hpp"
-#include <gtest/gtest.h>
 #ifndef KSEQ_INIT_READY
 #define KSEQ_INIT_READY
 #include "kseq.h"
