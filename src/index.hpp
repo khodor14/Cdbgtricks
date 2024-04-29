@@ -68,7 +68,9 @@ public:
     void update_unitig(Unitig seq,int id,int previous_id,int starting_position,int ending_position,bool keep_orient);
     void extract_kmers_from_funitigs(std::unordered_map<int,Unitig>& constructed_unitigs,GfaGraph& graph);
     uint64_t kmer_position(uint64_t kmer);
+    uint64_t kmer_position_minimizer(uint64_t kmer,uint64_t minimizer);
     int get_k_length();
+    int get_m_length();
     uint64_t compute_minimizer_position(uint64_t kmer,uint64_t &position);
     uint64_t compute_minimizer(uint64_t kmer);
     void update_index(std::unordered_map<int,Unitig>& constructed_funitigs,GfaGraph& graph);

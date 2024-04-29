@@ -101,7 +101,7 @@ uint64_t Unitig::get_ith_mer(const int i,const int k){
 }
 uint64_t Unitig::get_next_mer(uint64_t mer,const int i,const int k){
     /*
-    given the encoding of the (k-1)-mer at position i-1, and the position i we need to get the one at i
+    given the encoding of the k-mer at position i-1, and the position i we need to get the one at i
     */
    int j = static_cast<int>(std::floor((i+k-1 + (int)get_left_unused())/4));//the position of the bit encoding of 4-mer in the vector which contains the letter i+k-1 to be added to the  (i-1)'k-thmer
    int pos_letter_in_bits=(i+k-1+(int)get_left_unused())%4;//the position of ith letter in the bit encoding
@@ -109,6 +109,17 @@ uint64_t Unitig::get_next_mer(uint64_t mer,const int i,const int k){
    uint64_t answer=((mer<<2)|base)&(0xffffffffffffffff>>(64-2*k));//set the rightmost two bits then mask the left most unused bits
    return answer;
 
+}
+uint64_t Unitig::get_prev_mer(uint64_t mer,const int i,const int k){
+    /*
+    given the encoding of the k-mer at position i+1, and the position i we need to get the one at i
+    */
+   int j = static_cast<int>(std::floor((i+(int)get_left_unused())/4));//the position of the bit encoding of 4-mer in the vector which contains the letter i+k-1 to be added to the  (i-1)'k-thmer
+   int pos_letter_in_bits=(i+(int)get_left_unused())%4;//the position of ith letter in the bit encoding
+   uint64_t base=(unitig_encoding[j]<<2*pos_letter_in_bits)>>6;//shift by double the pos of the letter to the left then by 6, if we have 10110011 and pos=3 then we get 11000000
+   base=base<<(2*k-2);
+   uint64_t answer=(base|(mer>>2))&0x3FFFFFFFFFFFFFFF;//set the rightmost two bits then mask the left most unused bits
+   return answer;
 }
 void Unitig::insert_back(char base){
     /*

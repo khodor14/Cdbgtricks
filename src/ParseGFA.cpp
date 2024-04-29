@@ -156,7 +156,7 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 	graphfile.open(filename.c_str());
 	graph.rdbuf(graphfile.rdbuf());
 	for(std::pair<int,Unitig> unitig:unitigs){
-		graph<<">sequence"+std::to_string(unitig.first)<<std::endl;
+		graph<<"> sequence"+std::to_string(unitig.first)<<std::endl;
 		graph<<unitig.second.to_string()<<std::endl;
 	}
 	graphfile.close();

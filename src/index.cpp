@@ -145,10 +145,23 @@ void Index_mphf::read_super_buckets(GfaGraph& graph,std::vector<uint64_t> &kmers
         create_mphf(kmers,positions,graph,super_bucket_data,track_minimizers_in_super_bucket,super_bucket_created);
     }
 }
+int Index_mphf::get_m_length(){
+    return m;
+}
 uint64_t Index_mphf::kmer_position(uint64_t kmer){
     uint64_t pos=0;
     uint64_t minimizer=compute_minimizer_position(kmer,pos);//compute the minimizer of the k-mer
     minimizer=revhash_min(minimizer)%minimizer_number;
+    if(mphfs_info[minimizer].empty){
+        //0 is undefined k-mer position because the position is a triplet (unitig id,pos in unitig,orientation) represented in 64 bits
+        // as id is not zero then the defined position cannot be zero
+        return 0;//the mphf related to the minimizer of the k-mer is not yet created so the k-mer does not exist in the graph
+    }
+    uint64_t bucket_id=mphfs_info[minimizer].bucket_id;
+    uint64_t h_val=all_mphfs[bucket_id](kmer);//compute hash value and use module to capture out of range returned by bbhash
+    return position_kmers[bucket_id][h_val];//postion of this k-mer in the graph
+}
+uint64_t Index_mphf::kmer_position_minimizer(uint64_t kmer,uint64_t minimizer){
     if(mphfs_info[minimizer].empty){
         //0 is undefined k-mer position because the position is a triplet (unitig id,pos in unitig,orientation) represented in 64 bits
         // as id is not zero then the defined position cannot be zero

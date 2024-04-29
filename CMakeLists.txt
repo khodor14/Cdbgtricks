@@ -5,11 +5,11 @@ add_compile_options(-funroll-loops)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 #set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS} -O0 -g -DNDEBUG")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g")
-project(ccdbgupdater VERSION 0.1.0)
+project(cdbgtricks VERSION 0.1.0)
 set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/QueryStreamer.cpp src/CommonUtils.cpp src/FileSerializer.hpp src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
 #adding the directory
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNIT_TEST=1)
 add_subdirectory(external/googletests)
