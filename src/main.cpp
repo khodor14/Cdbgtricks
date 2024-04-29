@@ -1,5 +1,4 @@
 #include "ParseGFA.h"
-#include "index_kmer.h"
 #include "CommonUtils.h"
 #include "unitigmodification.h"
 #include <vector>
@@ -13,6 +12,7 @@
 #include "unitig.h"
 #include "index.hpp"
 #include "mapper.hpp"
+#include "QueryStreamer.hpp"
 #include "../external/pthash/external/essentials/include/essentials.hpp"
 #ifndef KSEQ_INIT_READY
 #define KSEQ_INIT_READY
@@ -20,27 +20,25 @@
 KSEQ_INIT(gzFile, gzread);
 #endif
 void show_usage(){
-    std::cerr<<"Usage: ./ccdbgupdater [COMMAND] [PARAMETERS]"<<"\n\n"
-            <<"./ccdbgupdater --input_graph <value> --input_genome <value> --k_mer_size <value>\n"
-            <<"OR\n"
-            <<"./ccdbgupdater --input_graph <value> --k_mer_file <value> --k_mer_size <value>\n"
-            <<"\n\n\n"
-            
+    std::cerr<<"Usage: ./cdbgtricks [COMMAND] [PARAMETERS]"<<"\n\n"
             <<"[COMMAND]:\n"
             <<"\tupdate \t\t update a compacted de Bruijn graph by a new genome\n"
             <<"\tindex \t\t index a compacted de Bruijn graph by (k-1)-mers\n"
             <<"\tconvert \t\t convert a graph from GFA/FASTA/binary to binary/Fasta\n\n"
+            <<"\tquery \t\t Query reads in Fasta/Fastq format (output presence/absence of reads)\n\n"
+            <<"\tmap\t\t Map reads in Fasta/Fastq format (output uni-MEMs)\n\n"
             
             <<"[PARAMETERS]: update\n\n"
             <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
             <<"\t"<<"--input_graph[-ig]"<<"\t the path to the pangenome graph in gfa or fasta format\n"
             <<"\t"<<"--input_genome"<<"\t the path to the genome used to augment the input graph\n"
             <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer.\n\t\t\t It must be the same value used when constructing the input graph\n"
+            <<"\t"<<"--threads[-t]"<<" the number of threads to be used during the update\n"
             <<"\t"<<"--minimizer_size[-m]"<<" the size of the minimizer (m<k)\n"
             <<"\t"<<"--k_mer_file"<<"\t the file of absent k-mers from the graph if already computed\n"
-            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for merging buckets (all buckets with size smaller this threshold are merged)\n"
+            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for creating buckets (rho in the paper)\n"
             <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
-            <<"\t"<<"--multiplier_super_bucket[-msb]"<<"\t size of super-bucket in terms of small bucket\n"
+            <<"\t"<<"--multiplier_super_bucket[-msb]"<<"\t size of super-bucket in terms of small bucket (gamma in the paper)\n"
             <<"\t"<<"--output_file_name[-o]"<<" the name of the output file\n" 
             <<"\t"<<"--update_index[-u]"<<" index the constructed funitigs\n"
             <<"\t"<<"--load_index[-li]"<<" the path to the saved index\n"
@@ -54,7 +52,9 @@ void show_usage(){
             <<"\t"<<"--input_graph[-ig]"<<"\t the path to the pangenome graph in gfa/fasta/binary format\n"
             <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer\n"
             <<"\t"<<"--minimizer_size[-m]"<<" the size of the minimizer (m<k)\n"
-            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for merging buckets (all buckets with size smaller this threshold are merged)\n"
+            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for creating buckets (rho in the paper)\n"
+            <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
+            <<"\t"<<"--multiplier_super_bucket[-msb]"<<"\t size of super-bucket in terms of small bucket (gamma in the paper)\n"
             <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
             <<"\t -it"<<"\t the input is in text format (fasta/GFA)\n"
             <<"\t -ib"<<"\t the input is in binary format\n"
@@ -73,13 +73,32 @@ void show_usage(){
             <<"\t"<<"-v"<<" verbosity\n" 
 
 
+            <<"[PARAMETERS]: map\n\n"
+            <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
+            <<"\t"<<"--input_graph[-ig]"<<"\t the path to the pangenome graph in gfa/fasta/binary format\n"
+            <<"\t"<<"--query_reads[-qr]"<<"\t the path to the to the read query set in fasta format\n"
+            <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer\n"
+            <<"\t"<<"--minimizer_size[-m]"<<" the size of the minimizer (m<k)\n"
+            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for creating buckets (rho in the paper)\n"
+            <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
+            <<"\t"<<"--multiplier_super_bucket[-msb]"<<"\t size of super-bucket in terms of small bucket (gamma in the paper)\n"
+            <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
+            <<"\t -it"<<"\t the input is in text format (fasta/GFA)\n"
+            <<"\t -ib"<<"\t the input is in binary format\n"
+            <<"\t"<<"--load_index[-li]"<<" the path to the saved index\n"
+            <<"\t"<<"--ratio[-r]"<<"\t the ratio of read k-mers that should be found in the graph\n"
+            <<"\t"<<"--output_file_name[-o]"<<"the name of the output file\n" 
+            <<"\t"<<"-v"<<" verbosity\n" 
+
             <<"[PARAMETERS]: query\n\n"
             <<"\t"<<"-h[--help]"<<"\t prints this help message\n"
             <<"\t"<<"--input_graph[-ig]"<<"\t the path to the pangenome graph in gfa/fasta/binary format\n"
             <<"\t"<<"--query_reads[-qr]"<<"\t the path to the to the read query set in fasta format\n"
             <<"\t"<<"--k_mer_size[-k]"<<" the size of the k-mer\n"
             <<"\t"<<"--minimizer_size[-m]"<<" the size of the minimizer (m<k)\n"
-            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for merging buckets (all buckets with size smaller this threshold are merged)\n"
+            <<"\t"<<"--smallest_merge[-s]"<<"\t the threshold for creating buckets (rho in the paper)\n"
+            <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
+            <<"\t"<<"--multiplier_super_bucket[-msb]"<<"\t size of super-bucket in terms of small bucket (gamma in the paper)\n"
             <<"\t"<<"--log_super_bucket[-l]"<<"\t log2 of the number of files to be used\n"
             <<"\t -it"<<"\t the input is in text format (fasta/GFA)\n"
             <<"\t -ib"<<"\t the input is in binary format\n"
@@ -124,6 +143,10 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
     else if(!strcmp(argv[1], "convert"))
     {
         arguments["option"]=std::tuple<bool,std::string>(false,"convert");
+    }
+    else if(!strcmp(argv[1], "map"))
+    {
+        arguments["option"]=std::tuple<bool,std::string>(false,"map");
     }
     else if(!strcmp(argv[1], "query"))
     {
@@ -246,6 +269,18 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
                 exit(0);
             } 
         }
+        else if(!strcmp(argv[i],"-t")||!strcmp(argv[i],"--threads"))
+        {
+            if(i+1<argc){
+                arguments["threads"]=std::tuple<bool,std::string>(true,argv[i+1]);
+                i=i+1;
+            }
+            else{
+                std::cerr<<"the number of threads is missing, use --help or -h for details on how to use the program\n";
+                show_usage();
+                exit(0);
+            } 
+        }
         else if(!strcmp(argv[i],"-m")||!strcmp(argv[i],"--minimizer_size"))
         {
             if(i+1<argc){
@@ -356,7 +391,7 @@ std::unordered_map<std::string,std::tuple<bool,std::string>> parseArgs(int argc,
             exit(0);
         }
     }
-    else if(!strcmp(std::get<1>(arguments["option"]).c_str(),"query")){
+    else if(!strcmp(std::get<1>(arguments["option"]).c_str(),"query")||!strcmp(std::get<1>(arguments["option"]).c_str(),"map")){
         if(!(std::get<0>(arguments["kvalue"])&&std::get<0>(arguments["graphfile"]))||!(std::get<0>(arguments["queryreads"]))){
             std::cerr<<"Some required arguments are missing\n";
             show_usage();
@@ -450,9 +485,10 @@ int main(int argc,char **argv){
     //parse arguments
     std::unordered_map<std::string,std::tuple<bool,std::string>> arguments=parseArgs(argc,argv);
     int minimizer_size=7;//default value
-    int smallest_bucket_merge=500;//default value
+    int smallest_bucket_merge=5000;//default value
     int log_super_buckets=4;//log2 of the number of super buckets (number of files)
-    uint64_t multiplier_sup_bucket=10;//the size of super-bucket in terms of small bucket
+    uint64_t multiplier_sup_bucket=1;//the size of super-bucket in terms of small bucket
+    int threads=1;
     if(std::get<0>(arguments["minimizer"])){
         minimizer_size=stoi(std::get<1>(arguments["minimizer"]));
     }
@@ -464,6 +500,9 @@ int main(int argc,char **argv){
     }
     if(std::get<0>(arguments["multipliersuperb"])){
         multiplier_sup_bucket=stoi(std::get<1>(arguments["multipliersuperb"]));
+    }
+    if(std::get<0>(arguments["threads"])){
+        threads=stoi(std::get<1>(arguments["threads"]));
     }
     if(!strcmp(std::get<1>(arguments["option"]).c_str(),"index")){
         GfaGraph g;
@@ -506,6 +545,24 @@ int main(int argc,char **argv){
         else{
             load_index(std::get<1>(arguments["loadindex"]),ind);
         }
+        QStreamer streamer=QStreamer(g,ind);
+        streamer.stream_all(std::get<1>(arguments["queryreads"]),std::get<1>(arguments["outputfilename"])+".tsv",std::stof(std::get<1>(arguments["ratio"])));
+    }
+    else if(!strcmp(std::get<1>(arguments["option"]).c_str(),"map")){//query reads
+        GfaGraph g;
+        if(std::get<0>(arguments["loadgraphbinary"])){
+            g.deserialize(std::get<1>(arguments["loadgraphbinary"]));
+        }
+        else{
+            g=g.LoadFromFile(std::get<1>(arguments["graphfile"]));
+        }
+        Index_mphf ind=Index_mphf(stoi(std::get<1>(arguments["kvalue"])),minimizer_size,log_super_buckets,smallest_bucket_merge,multiplier_sup_bucket);
+        if(!std::get<0>(arguments["loadindex"])){
+            ind.build(g);
+        }
+        else{
+            load_index(std::get<1>(arguments["loadindex"]),ind);
+        }
         map_and_write_res(std::get<1>(arguments["queryreads"]),std::get<1>(arguments["outputfilename"])+".txt",std::stof(std::get<1>(arguments["ratio"])),ind,g);
     }
     else{//update the graph
@@ -530,7 +587,7 @@ int main(int argc,char **argv){
             }
             //call kmtricks
             std::system("chmod +x ../src/utils.sh");
-            std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputfilename"])+".txt").c_str());
+            std::system(("bash ../src/utils.sh "+std::get<1>(arguments["kvalue"])+" "+input_to_kmtricks+" "+std::get<1>(arguments["genomefile"])+" "+std::get<1>(arguments["outputfilename"])+".txt "+std::to_string(threads)).c_str());
             //load the absent k-mers found by kmtricks
             k_mer=createHashTable(std::get<1>(arguments["outputfilename"])+".txt");
         }
