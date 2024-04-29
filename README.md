@@ -67,6 +67,7 @@ Usage: ./cdbgtricks [COMMAND] [PARAMETERS]
 	--input_genome	 the path to the genome used to augment the input graph
 	--k_mer_size[-k] the size of the k-mer.
 			 It must be the same value used when constructing the input graph
+        --threads[-t] the number of threads to be used during the update
 	--minimizer_size[-m] the size of the minimizer (m<k)
 	--k_mer_file	 the file of absent k-mers from the graph if already computed
 	--smallest_merge[-s]	 the threshold for merging buckets (all buckets with size smaller this threshold are merged)
