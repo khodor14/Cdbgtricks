@@ -5,27 +5,32 @@ add_compile_options(-funroll-loops)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 #set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS} -O0 -g -DNDEBUG")
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g")
-project(ccdbgupdater VERSION 0.1.0)
+project(cdbgtricks VERSION 0.1.0)
 set(CONTACT "khodor.hannoush@inria.fr")
 #set to default type
-
 #adding the executable
-add_executable(${PROJECT_NAME} src/main.cpp	src/ParseGFA.cpp src/unitigmodification.cpp  src/CommonUtils.cpp src/FileSerializer.hpp src/index_kmer.cpp src/unitig.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h)
-
+add_executable(${PROJECT_NAME} src/main.cpp src/ParseGFA.cpp src/unitigmodification.cpp  src/QueryStreamer.cpp src/CommonUtils.cpp src/FileSerializer.hpp src/unitig.cpp src/mapper.cpp src/zstr.hpp src/strict_fstream.hpp src/kseq.h src/index.cpp)
 #adding the directory
-add_subdirectory(external/sparsehash)
+target_compile_definitions(${PROJECT_NAME} PRIVATE UNIT_TEST=1)
+add_subdirectory(external/googletests)
 target_include_directories(${PROJECT_NAME}
     #PUBLIC src
-    PUBLIC external/sparsehash
     PUBLIC external/boost
     PUBLIC external/unordered_dense
+    PUBLIC external/pthash
+    PUBLIC external/pthash/include
+    PUBLIC external/pthash/external/xxHash
+    PUBLIC external/pthash/external/essentials/include
 )
 #linking to directories
 target_link_directories(${PROJECT_NAME}
     #PRIVATE src
-    PRIVATE external/sparsehash
     PRIVATE external/boost
     PRIVATE external/unordered_dense
+    PRIVATE external/pthash
+    PRIVATE external/pthash/include
+    PRIVATE external/pthash/external/xxHash
+    PRIVATE external/pthash/external/essentials/include
 )
 find_package(ZLIB REQUIRED)
 target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
@@ -42,7 +47,11 @@ if (zstd_FOUND)
 else()
     message(FATAL_ERROR "Zstandard (zstd) not found.")
 endif(zstd_FOUND)
+if (CompileTest)
+    add_subdirectory(test)
+endif()
 target_link_libraries(${PROJECT_NAME} boost_serialization)
+target_link_libraries(${PROJECT_NAME} pthread)
 find_package(Boost REQUIRED COMPONENTS serialization)
 add_library(boost::serialization INTERFACE IMPORTED)
 set_target_properties(boost::serialization PROPERTIES

@@ -1,3 +1,5 @@
+#ifndef ParseGFA_H
+#define ParseGFA_H
 #include <vector>
 #include <fstream>
 #include <string>
@@ -7,9 +9,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include "unitig.h"
 #include "FileSerializer.hpp"
-#ifndef ParseGFA_H
-#define ParseGFA_H
-
+#include "CommonUtils.h"
 class Node
 {
 private:
@@ -59,6 +59,8 @@ public:
     void delete_unitig(int id);
     void insert_unitig(int id,Unitig u);
     Unitig get_unitig(int id);
+    int test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos,int k);
+    uint64_t get_kmer(uint64_t position,int k);
     void serialize(const std::string filename);
     void deserialize(const std::string filename);
     ~GfaGraph() = default;

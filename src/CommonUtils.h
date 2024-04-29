@@ -1,3 +1,5 @@
+#ifndef COMMON_UTILS_H
+#define COMMON_UTILS_H
 #include <iostream>
 #include <cstdint>
 #include <string>
@@ -19,3 +21,9 @@ std::string bits_to_seq_4(uint8_t encoding,int length);
 uint64_t reverse_complement(const uint64_t kmer,const int k);
 uint64_t canonical_bits(const uint64_t kmer,const int k);
 bool is_canonical(const uint64_t kmer,const int k);
+uint64_t compute_canonical_minimizer(uint64_t kmer,size_t k,size_t m,uint64_t minimizer_number);
+uint64_t get_next_kmer(uint64_t kmer,char c,int k);
+uint64_t kmer_to_bits(std::string_view seq);
+uint64_t revhash_min(uint64_t minimizer);
+uint64_t unrevhash_min(uint64_t minimizer);
+#endif // COMMON_UTILS_H

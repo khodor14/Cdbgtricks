@@ -35,6 +35,7 @@ public:
     uint8_t get_right_unused();
     uint64_t get_ith_mer(const int i,const int k);
     uint64_t get_next_mer(uint64_t mer,const int i,const int k);
+    uint64_t get_prev_mer(uint64_t mer,const int i,const int k);
     void insert_front(char base);
     void insert_back(char base);
     int unitig_length();

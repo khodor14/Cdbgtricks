@@ -1,9 +1,13 @@
-[submodule "external/sparsehash"]
-	path = external/sparsehash
-	url = https://github.com/sparsehash/sparsehash-c11.git
 [submodule "external/boost"]
 	path = external/boost
 	url = https://github.com/boostorg/serialization.git
 [submodule "external/unordered_dense"]
 	path = external/unordered_dense
 	url = https://github.com/martinus/unordered_dense.git
+[submodule "external/googletests"]
+	path = external/googletests
+	url = https://github.com/google/googletest.git
+[submodule "external/pthash"]
+	path = external/pthash
+	url = https://github.com/jermp/pthash.git
+	branch = play

@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <memory>
 #include "zstr.hpp"
+#include <bitset>
 #ifndef KSEQ_INIT_READY
 #define KSEQ_INIT_READY
 #include "kseq.h"
@@ -81,10 +82,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 	std::string line;
 	std::vector<std::string> line_fields;
 	int max_id=0;
-	std::ofstream graphfile;
-	std::ostream graphf(0);
-	graphfile.open(filename);
-	graphf.rdbuf(graphfile.rdbuf());
 	std::string seq;
 	while (getline(gin, line).good())
 	{
@@ -108,8 +105,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 					max_id=id;
 				}
 				seq=move(line_fields[1]);
-				graphf<<">sequence"+std::to_string(id)<<std::endl;
-				graphf<<seq<<std::endl;
 				graph.unitigs[id]=Unitig(seq);
 				line_fields.clear();
 		}
@@ -151,7 +146,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
             graph.edges.push_back(e);
 		}*/
 	}
-	graphfile.close();
 	graph.set_max_node_id(max_id);
 	return graph;
 }
@@ -162,7 +156,7 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename,bool gfa){
 	graphfile.open(filename.c_str());
 	graph.rdbuf(graphfile.rdbuf());
 	for(std::pair<int,Unitig> unitig:unitigs){
-		graph<<">sequence"+std::to_string(unitig.first)<<std::endl;
+		graph<<"> sequence"+std::to_string(unitig.first)<<std::endl;
 		graph<<unitig.second.to_string()<<std::endl;
 	}
 	graphfile.close();
@@ -295,4 +289,56 @@ void GfaGraph::fixe_edges(int node_id,int new_node, bool from, bool to){
 }
 std::unordered_map<int,Unitig> GfaGraph::get_nodes(){
 	return unitigs;
+}
+int GfaGraph::test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos,int k){
+	/*
+	Input:
+		a k-mer
+		its position info (64 bits):see below
+		its size
+	return if this k-mer is in the graph and if we encountered a split position along with the split position
+	this function is needed as an mphf will return a valid identifier for a given k-mer, to validate that this k-mer
+	is not an alien one, we compare it with the one at the provided position
+	*/
+	//assuming kmer is sent in its canonical form
+	/*Representation of k-mer position
+	|32 bits for unitig id|31 bits for position in this unitig|1 bit for orientation|
+	*/
+	int id_unitig_graph=kmer_pos>>32;//the id of the unitig having the first occurence
+    int position_unitig=(kmer_pos>>1)&0x7FFFFFFF;//the position of k-mer in this unitig
+	Unitig seq=unitigs[id_unitig_graph];
+	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
+	std::tuple<uint64_t,bool> kmer_query_canonical=reverseComplementCanonical(kmer,k);
+	std::tuple<uint64_t,bool> kmer_graph_canonical=reverseComplementCanonical(kmer_in_graph,k);
+	if(std::get<0>(kmer_query_canonical)==std::get<0>(kmer_graph_canonical)){
+		//the k-mer is in the graph
+		uint64_t pref_kmer=canonical_bits(kmer_in_graph>>2,k-1);
+		if(suffix==pref_kmer){
+			return position_unitig;
+		}
+		else{
+			if(position_unitig==seq.unitig_length()-k){
+				return 0;
+			}
+			else{
+				return position_unitig+1;
+			}
+		}
+	}
+	else{
+		return -1;//the k-mer is not in the graph
+	}
+
+}
+uint64_t GfaGraph::get_kmer(uint64_t position,int k){
+	//takes the position of the k-mer (unitig id,unitig position,orientation)
+	//return the k-mer at that position
+	int id_unitig_graph=(int)(position>>32);//the id of the unitig having the first occurence
+    int position_unitig=(int)((position>>1)&0x7FFFFFFF);//the position of k-mer in this unitig
+	Unitig seq=unitigs[id_unitig_graph];
+	if(position_unitig>seq.unitig_length()-k){
+		std::cout<<"out of range\n";
+	}
+	uint64_t kmer_in_graph=seq.get_ith_mer(position_unitig,k);//take the k-mer from the unitig
+	return kmer_in_graph;
 }

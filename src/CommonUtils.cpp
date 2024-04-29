@@ -230,3 +230,39 @@ uint64_t canonical_bits(const uint64_t kmer,const int k){
 bool is_canonical(const uint64_t kmer,const int k){
     return kmer<reverse_complement(kmer,k);
 }
+uint64_t get_next_kmer(uint64_t kmer,char c,int k){
+    /*
+    takes a kmer in binary format and the next character c
+    it returns the next kmer in binary
+    */
+    uint64_t next_kmer=kmer&(0xffffffffffffffff>>(66-2*k));
+    next_kmer=(next_kmer<<2)|baseToInt(c);
+    return next_kmer;
+}
+uint64_t kmer_to_bits(std::string_view seq){
+    /*
+    convert kmer to 64 bits
+    */
+    std::uint64_t result=0;
+    for(int i=0;i<seq.size();i++){
+        result=result<<2;
+        result=result|baseToInt(seq[i]);
+    }
+    return result;
+}
+uint64_t revhash_min(uint64_t minimizer) {
+	minimizer = ((minimizer >> 32) ^ minimizer) * 0xD6E8FEB86659FD93;
+	minimizer = ((minimizer >> 32) ^ minimizer) * 0xD6E8FEB86659FD93;
+	minimizer = ((minimizer >> 32) ^ minimizer);
+	return minimizer;
+}
+uint64_t unrevhash_min(uint64_t key){
+    key = (~key) + (key << 21); // key = (key << 21) - key - 1;
+	key = key ^ (key >> 24);
+	key = (key + (key << 3)) + (key << 8); // key * 265
+	key = key ^ (key >> 14);
+	key = (key + (key << 2)) + (key << 4); // key * 21
+	key = key ^ (key >> 28);
+	key = key + (key << 31);
+	return key;
+}
