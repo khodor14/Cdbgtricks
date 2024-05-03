@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <cassert>
 #include <fstream>
 #include <sstream>
 #include <zlib.h>
 #include <memory>
 #include <iostream>
+#include <cassert>
 
 #include "strict_fstream.hpp"
 namespace zstr

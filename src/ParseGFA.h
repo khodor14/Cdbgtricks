@@ -5,11 +5,37 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
 #include "unitig.h"
 #include "FileSerializer.hpp"
 #include "CommonUtils.h"
+
+#include "kseq.h"
+
+#include <iostream>
+
+
+#include <sstream>
+
+
+
+#include <algorithm>
+
+#include <cstring>
+
+#include <string_view>
+
+#include <sys/stat.h>
+
+#include <stdint.h>
+
+#include <stdio.h>
+
+#include <memory>
+
+#include "zstr.hpp"
+
+#include <bitset>
+
 class Node
 {
 private:

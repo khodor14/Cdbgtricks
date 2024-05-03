@@ -7,7 +7,7 @@ genome_link=$3
 output_file=$4
 threads=$5
 #kmtricks run for values of k in the range [8,255]
-if [ $kmer -lt 8 ] || [ $kmer -gt 255];
+if [ $kmer -lt 8 ] || [ $kmer -gt 255 ];
 then
   echo "The value of k should be in the range [8,255]"
   exit 0
