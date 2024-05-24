@@ -6,35 +6,18 @@
 #include <vector>
 #include <unordered_map>
 #include "unitig.h"
-#include "FileSerializer.hpp"
 #include "CommonUtils.h"
-
 #include "kseq.h"
-
 #include <iostream>
-
-
 #include <sstream>
-
-
-
 #include <algorithm>
-
 #include <cstring>
-
 #include <string_view>
-
 #include <sys/stat.h>
-
 #include <stdint.h>
-
 #include <stdio.h>
-
 #include <memory>
-
 #include "zstr.hpp"
-
-#include <bitset>
 
 class Node
 {
@@ -86,6 +69,7 @@ public:
     void insert_unitig(int id,Unitig u);
     Unitig get_unitig(int id);
     int test_kmer_presence(uint64_t kmer,uint64_t suffix,uint64_t kmer_pos,int k);
+    bool test_kmer(uint64_t kmer,uint64_t kmer_pos,int k);
     uint64_t get_kmer(uint64_t position,int k);
     void serialize(const std::string filename);
     void deserialize(const std::string filename);

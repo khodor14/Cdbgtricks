@@ -79,14 +79,17 @@ class Index_mphf {
   Index_mphf(size_t k_size, size_t m_size, size_t log_super_bucket, size_t small_b_size, size_t multiplier_bucket);
   void build(GfaGraph & graph);
   void update_unitig(Unitig seq, int id, int previous_id, int starting_position, int ending_position, bool keep_orient);
-  void extract_kmers_from_funitigs(std::unordered_map < int, Unitig > & constructed_unitigs, GfaGraph & graph);
+  void update_unitig_with_skips(Unitig seq, int id, int previous_id, std::vector<std::pair<int,int>> skips);
+  void extract_kmers_from_unitig(Unitig &u,const int id,int start,int end,std::vector < std::ostream * > &minimizer_outs);
+  void extract_kmers_from_funitigs_in_unitigs(GfaGraph & graph, std::unordered_map<int,std::vector<std::pair<int, int>>> funitig_offsets, std::vector < std::ostream * > &minimizer_outs);
+  void extract_kmers_from_funitigs(std::unordered_map < int, Unitig > & constructed_unitigs, GfaGraph & graph, std::vector< int > & unused_ids, std::unordered_map < int, std::vector< std::pair< int, int > > > & track_funitig_offsets);
   uint64_t kmer_position(uint64_t kmer);
   uint64_t kmer_position_minimizer(uint64_t kmer, uint64_t minimizer);
   int get_k_length();
   int get_m_length();
   uint64_t compute_minimizer_position(uint64_t kmer, uint64_t & position);
   uint64_t compute_minimizer(uint64_t kmer);
-  void update_index(std::unordered_map < int, Unitig > & constructed_funitigs, GfaGraph & graph);
+  void update_index(std::unordered_map < int, Unitig > & constructed_funitigs, GfaGraph & graph, std::vector< int > & unused_ids, std::unordered_map < int, std::vector< std::pair< int, int > > > & track_funitig_offsets);
   template < typename Visitor >
   void visit(Visitor & visitor) {
     visitor.visit(k);

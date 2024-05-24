@@ -30,25 +30,19 @@ std::vector < char > possible_right_extension(uint64_t mer, int k, std::unordere
   uint64_t canonical_km = canonical_bits(mer, k - 1);
   for (int i = 0; i < 4; i++) {
     //the canonical of mer+character from the alphabet is present
-    uint64_t next_kmer = ((mer << 2) & (0xffffffffffffffff >> (64 - 2 * k))) | baseToInt(alphabet[i]);
-    query = canonical_bits(next_kmer, k);
+    uint64_t query = canonical_bits(((mer << 2) | baseToInt(alphabet[i])) & (0xffffffffffffffff >> (64 - 2 * k)),k);
     if (kmers_to_add_to_graph.count(query) > 0) { //&& !kmers_to_add_to_graph[query]
-      //add the corresponding character to the vector
-      if (query == next_kmer) {
-        possible_character_for_extension.push_back(alphabet[i]);
-      } else {
-        possible_character_for_extension.push_back(reversealphabet[i]);
-      }
+      possible_character_for_extension.push_back(alphabet[i]);
     } else {
       uint64_t kmer_pos = ind.kmer_position(query); //get the k-mer position(id,position in unitig,orientation)
       if (kmer_pos != 0) { //we found an mphf corresponding to the minimizer of the k-mer
-        int may_exist = graph.test_kmer_presence(query, canonical_km, kmer_pos, ind.get_k_length());
+        int may_exist = graph.test_kmer_presence(query, mer, kmer_pos, ind.get_k_length());
         if (may_exist > 0) { //we encountered a split position we add the position to a vector which will be sorted and processed
           kmer_pos = kmer_pos >> 32;
           kmer_pos = (kmer_pos << 32) | may_exist;
           candidate_splits[kmer_pos] = true;
           return std::vector < char > ();
-        } else if (may_exist == 0 && number_join < 2) { //the k-mer is in the graph and we encountered a possible join
+        } else if (may_exist > -3 && number_join < 2) { //the k-mer is in the graph and we encountered a possible join
           /*
           add some conditions to check if it is a join
           how many possible joins are found=> if 1 then maybe join => let from left extention decide
@@ -57,8 +51,10 @@ std::vector < char > possible_right_extension(uint64_t mer, int k, std::unordere
           we stop at the second occurence of suffix-prefix overlap because it is no more a join
           the conditions outside the loop will correct the value of join_position
           */
-          number_join++;
+         if(may_exist==0 || may_exist==-1){
           join_position = kmer_pos;
+         }
+          number_join++;
         }
       }
     }
@@ -115,8 +111,8 @@ std::string extend_right(std::string kmer, uint64_t mer, Index_mphf & unitigs_in
         if (possible_join == 2 && possible_join_2 == 2) {
           char character_to_add = possible_character_to_extend.front(); //get the character to augment it to our string result from the vector
           //std::string key=suffix+character_to_add; 
-          uint64_t k_mer_from_funitigs = canonical_bits((suffix << 2) | baseToInt(character_to_add), unitigs_index.get_k_length());
-          if (!kmers_to_add_to_graph[k_mer_from_funitigs]) {
+          uint64_t k_mer_from_funitigs = canonical_bits(((suffix << 2) | baseToInt(character_to_add) & (0xffffffffffffffff >> (64 - 2 * unitigs_index.get_k_length()))), unitigs_index.get_k_length());
+          if (kmers_to_add_to_graph.count(k_mer_from_funitigs)>0 && !kmers_to_add_to_graph[k_mer_from_funitigs]) {
             kmers_to_add_to_graph[k_mer_from_funitigs] = true;
             extended_kmer = extended_kmer + character_to_add; //append it to the string only once, the append function takes as argument the number of times we need to append to a string
             suffix = ((suffix << 2) | baseToInt(character_to_add)) & (0xffffffffffffffff >> (66 - 2 * unitigs_index.get_k_length()));
@@ -137,6 +133,7 @@ std::string extend_right(std::string kmer, uint64_t mer, Index_mphf & unitigs_in
         //we encountered a join
         int id_u = possible_join >> 32;
         int position_unitig = (int)((possible_join >> 1) & 0x7FFFFFFF);
+        std::cout<<id_u<<","<<position_unitig<<","<<id<<" funId\n";
         if (funitigs_joins.count(id) == 0) {
           funitigs_joins[id] = std::pair < int, int > (0, 0);
         }
@@ -176,7 +173,7 @@ Unitig unitig_from_kmers(uint64_t kmer, Index_mphf & unitig_index, std::unordere
 }
 std::unordered_map < int, Unitig > construct_unitigs_from_kmer(Index_mphf & unitig_index, std::unordered_map < uint64_t, bool > & kmers, int k,
   GfaGraph & graph, std::unordered_map < uint64_t, bool > & candidate_splits,
-  std::unordered_map < int, std::pair < int, int >> & candidate_join, std::unordered_map < int, std::pair < int, int >> funitigs_join) {
+  std::unordered_map < int, std::pair < int, int >> & candidate_join, std::unordered_map < int, std::pair < int, int >> & funitigs_join) {
   /*
   from k-mers represented as 64 bits
   */
@@ -195,7 +192,8 @@ std::unordered_map < int, Unitig > construct_unitigs_from_kmer(Index_mphf & unit
   }
   return unitigs_map;
 }
-void update_CdBG(Index_mphf & graph_index, GfaGraph & graph, std::unordered_map < int, Unitig > & constructed_unitigs, std::unordered_map < uint64_t, bool > & candidate_splits, std::unordered_map < int, std::pair < int, int >> & candidate_join, bool update_index) {
+void update_CdBG(Index_mphf & graph_index, GfaGraph & graph, std::unordered_map < uint64_t, bool > & candidate_splits, 
+                std::unordered_map < int, std::pair < int, int >> & candidate_join, std::unordered_map<int,int> &map_on_split_if_join,bool update_index) {
   std::vector < uint64_t > sorted_splits(candidate_splits.size()); //to be used for sorting
   int i = 0;
   for (auto elem: candidate_splits) {
@@ -254,6 +252,9 @@ void update_CdBG(Index_mphf & graph_index, GfaGraph & graph, std::unordered_map 
       Unitig right = Unitig((pos + (int)(left_unused)) % 4, right_unsed, std::vector < uint8_t > (seq_bases.begin() + static_cast < int > (std::floor((pos + (int)(left_unused)) / 4)), seq_bases.end())); //take the right from position till the end
       graph.insert_unitig(new_id, right);
       split_to_join[current_id].second = new_id; //this is the last position of split, so unitig with new_id is the right part of the unitig involved in split
+      if(candidate_join.count(current_id) > 0){
+        map_on_split_if_join[current_id] = new_id;
+      }
       if (update_index) {
         graph_index.update_unitig(seq, new_id, current_id, pos, seq.unitig_length() - graph_index.get_k_length(), true);
       }
@@ -261,11 +262,222 @@ void update_CdBG(Index_mphf & graph_index, GfaGraph & graph, std::unordered_map 
   }
   graph.set_max_node_id(new_id);
 }
-void insert_funitigs(GfaGraph & graph, std::unordered_map < int, Unitig > & constructed_unitigs) {
-  int new_id = graph.get_max_node_id();
+void insert_funitigs(GfaGraph & graph, std::unordered_map < int, Unitig > & constructed_unitigs, std::vector< int > & unused_ids) {
+  std::vector< int > skipped_ids(unused_ids.size());
+  int i = 0;
+  int new_id = 0;
+  // use the ids of removed unitigs (those unitigs that are merged with other unitigs)
+  for(auto it = constructed_unitigs.begin(); it != constructed_unitigs.end() && i < unused_ids.size(); it++){
+    new_id = unused_ids[i];
+    skipped_ids[i] = it->first;
+    i++;
+    graph.insert_unitig(new_id, it->second);
+  }
+  //delte the funitigs that took unused id (delete them from funitigs)
+  for(int elem : skipped_ids){
+    constructed_unitigs.erase(elem);
+  }
+  //insert the remaining funitigs
+  new_id = graph.get_max_node_id();
   for (auto elem: constructed_unitigs) {
     new_id++;
     graph.insert_unitig(new_id, elem.second); //insert funitig to graph
   }
   graph.set_max_node_id(new_id);
+}
+void merge_all(GfaGraph& graph,std::unordered_map<int,Unitig>& funitigs,Index_mphf &unitig_index,std::unordered_map<int,std::pair<int,int>> &funitig_joins,
+            std::unordered_map<int,std::pair<int,int>> &unitig_joins,std::unordered_map<int,int> &right_after_split,
+            std::unordered_map<int,std::vector<std::pair<int,int>>> &track_funitig_offsets,std::vector<int> &unused_id){
+    std::unordered_map<uint64_t,uint64_t> suffix_prefix_funitigs;
+    std::unordered_map<uint64_t,uint64_t> suffix_prefix_unitigs;
+    index_concerned_funitigs(suffix_prefix_funitigs,funitigs,funitig_joins,unitig_index.get_k_length());
+    index_concerned_unitigs(suffix_prefix_unitigs,graph,unitig_joins,right_after_split,unitig_index.get_k_length());
+
+    for(auto &elem:suffix_prefix_funitigs){
+      merge_one_funitig(elem.first,elem.second,suffix_prefix_funitigs,suffix_prefix_unitigs,funitigs,graph,unitig_index,track_funitig_offsets,unused_id);
+    }
+}
+void index_concerned_funitigs(std::unordered_map<uint64_t,uint64_t> &suffix_prefix_funitigs,std::unordered_map<int,Unitig>& funitigs,std::unordered_map<int,std::pair<int,int>> &funitig_joins,int k){
+  for(auto &elem:funitig_joins){
+    Unitig u=funitigs[elem.first];
+    index_suffix_prefix(elem.first,elem.second.first,elem.second.second,u,suffix_prefix_funitigs,k);
+  }
+}
+void index_concerned_unitigs(std::unordered_map<uint64_t,uint64_t> &suffix_prefix_unitigs,GfaGraph& graph,std::unordered_map<int,std::pair<int,int>> &unitig_joins,
+                            std::unordered_map<int,int> right_after_split,int k){
+    for(auto &elem:unitig_joins){
+      Unitig u=graph.get_unitig(elem.first);
+      if(elem.second.first != 0){
+        insert_suff_pref(u.get_ith_mer(0,k-1),elem.first,0,k,suffix_prefix_unitigs);
+      }
+      if(elem.second.second != 0){
+        if(right_after_split.count(elem.first) > 0){
+          u = graph.get_unitig(right_after_split[elem.first]);
+        }
+        insert_suff_pref(u.get_ith_mer(u.unitig_length() - k + 1,k-1),elem.first,u.unitig_length() - k + 1,k,suffix_prefix_unitigs);
+      }
+  }
+}
+void index_suffix_prefix(const int id,const int left,const int right,Unitig &u,std::unordered_map<uint64_t,uint64_t> &suffix_prefix_funitigs,int k){
+      if(left!=0){
+        insert_suff_pref(u.get_ith_mer(0,k-1),id,0,k,suffix_prefix_funitigs);
+      }
+      if(right!=0){
+        insert_suff_pref(u.get_ith_mer(u.unitig_length() - k + 1,k-1),id,u.unitig_length() - k + 1,k,suffix_prefix_funitigs);
+      }
+}
+void merge_one_funitig(uint64_t kmmer,uint64_t position,std::unordered_map<uint64_t,uint64_t> &suffix_prefix_funitigs,
+          std::unordered_map<uint64_t,uint64_t> &suffix_prefix_unitigs,std::unordered_map<int,Unitig>& funitigs,GfaGraph& graph,Index_mphf &unitig_index,
+          std::unordered_map<int,std::vector<std::pair<int,int>>> &track_funitig_offsets,std::vector<int> &unused_id){
+    uint64_t pos_unitig=suffix_prefix_unitigs[kmmer];
+    int funitig_id = position >> 32;
+    int kmm_offset_funitig= position & 0x7FFFFFFF;
+    int unitig_id = pos_unitig >> 32;
+    int kmm_offset_unitig= pos_unitig & 0x7FFFFFFF;
+    Unitig funitig = funitigs[funitig_id];
+    Unitig uni = graph.get_unitig(unitig_id);
+    bool order1 = false;
+    bool reversed1 = false;
+    std::string merged = concat(funitig,uni,kmm_offset_funitig,kmm_offset_unitig,unitig_index.get_k_length(),order1,reversed1);
+    int kmm_offset = abs(kmm_offset_funitig - funitig.unitig_length() + unitig_index.get_k_length() -1);
+    uint64_t kmm_extremity = funitig.get_ith_mer(kmm_offset,unitig_index.get_k_length() - 1);
+    kmm_extremity = canonical_bits(kmm_extremity,unitig_index.get_k_length() - 1);
+    if(reversed1 && track_funitig_offsets.count(unitig_id) > 0){
+      track_funitig_offsets[unitig_id]=reverseOffsets(track_funitig_offsets[unitig_id],uni.unitig_length()-1);
+    }
+    if(suffix_prefix_funitigs.count(kmm_extremity) > 0){
+      uint64_t position_ext_uni = suffix_prefix_unitigs[kmm_extremity];
+      int unitig_ext_id = position_ext_uni >> 32;
+      int kmm_offset_ext_uni = position_ext_uni & 0x7FFFFFFF;
+      bool order2=false;
+      bool reversed2= false;
+      Unitig uni2 = graph.get_unitig(unitig_ext_id);
+      std::string merged2 = concat(funitig,uni2,kmm_offset_funitig,kmm_offset_ext_uni,unitig_index.get_k_length(),order2,reversed2);
+      if(reversed2 && track_funitig_offsets.count(unitig_ext_id) > 0){
+        track_funitig_offsets[unitig_ext_id]=reverseOffsets(track_funitig_offsets[unitig_ext_id],uni2.unitig_length()-1);
+      }
+      if(order2){
+        merge_and_track(merged,merged2,unitig_ext_id,unitig_id,uni.unitig_length(),uni2.unitig_length(),funitig.unitig_length(),unitig_index,graph,track_funitig_offsets,unused_id,suffix_prefix_unitigs);
+      }
+      else{
+        merge_and_track(merged2,merged,unitig_id,unitig_ext_id,uni2.unitig_length(),uni.unitig_length(),funitig.unitig_length(),unitig_index,graph,track_funitig_offsets,unused_id,suffix_prefix_unitigs);
+      }
+    }
+    else{
+      std::vector<std::pair<int,int>> offsets;
+      offsets.push_back(std::pair<int,int>(0,funitig.unitig_length()-1));
+      std::vector<std::pair<int,int>> offset_in_unitig;
+      Unitig res = Unitig(merged);
+      if(track_funitig_offsets.count(unitig_id) > 0){
+        offset_in_unitig = track_funitig_offsets[unitig_id];
+      }
+      if(order1){
+        shift_and_merge(offset_in_unitig,offsets,uni.unitig_length() - unitig_index.get_k_length() + 1);
+        track_funitig_offsets[unitig_id] = offset_in_unitig;
+        update_suff_pref_index(res.get_ith_mer(0,unitig_index.get_k_length()-1),unitig_id,0,unitig_index.get_k_length(),suffix_prefix_unitigs);
+      }
+      else{
+        shift_and_merge(offsets,offset_in_unitig,funitig.unitig_length() - unitig_index.get_k_length() + 1);
+        track_funitig_offsets[unitig_id] = offsets;
+        update_suff_pref_index(res.get_ith_mer(res.unitig_length() - unitig_index.get_k_length() + 1,unitig_index.get_k_length()-1),unitig_id,res.unitig_length() - unitig_index.get_k_length() + 1,unitig_index.get_k_length(),suffix_prefix_unitigs);
+      }
+      graph.insert_unitig(unitig_id,res);
+    }
+    funitigs.erase(funitig_id);
+}
+std::string concat(Unitig funitig, Unitig uni,int offset_funitig,int offset_unitig,int k,bool &order, bool &reversed){
+  std::string result("");
+  if(offset_funitig == 0 && offset_unitig > 0){
+    result = uni.to_string() + funitig.to_string().substr(k-1);
+    order = true;
+  }
+  else if (offset_funitig > 0 && offset_unitig == 0)
+  {
+    result = funitig.to_string() + uni.to_string().substr(k-1);
+    order = false;
+  }
+  else if (offset_funitig > 0 && offset_unitig > 0)
+  {
+    order = false;
+    reversed =true;
+    result = funitig.to_string() + reverseComplement(uni.to_string()).substr(k-1);
+  }
+  else{
+    order = true;
+    reversed = true;
+    result = reverseComplement(uni.to_string()) + funitig.to_string().substr(k-1);
+  }
+  return result;
+}
+void shift_and_merge(std::vector<std::pair<int, int>> &destination, const std::vector<std::pair<int, int>> &source, int shift) {
+    // shift elements in source
+    destination.reserve(destination.size()+source.size());
+    auto shift_pair = [shift](const std::pair<int, int>& p) {
+        return std::make_pair(p.first + shift, p.second + shift);
+    }; 
+    // append elements in source to destination
+    std::transform(source.begin(), source.end(), std::back_inserter(destination), shift_pair);
+}
+void merge_and_track(std::string merged,std::string merged2,int unitig1_id,int unitig2_id,
+                      int unitig1_length,int unitig2_length,int funitig_length,
+                      Index_mphf &unitig_index,GfaGraph& graph,std::unordered_map<int,std::vector<std::pair<int,int>>> &track_funitig_offsets,
+                      std::vector<int> &unused_id,std::unordered_map<uint64_t,uint64_t> &suffix_prefix_unitigs){
+  std::vector<std::pair<int,int>> offsets;
+  if(track_funitig_offsets.count(unitig1_id)){
+    offsets = track_funitig_offsets[unitig1_id];
+  }
+  offsets.push_back(std::pair<int,int>(unitig2_length - unitig_index.get_k_length() + 1,unitig2_length - unitig_index.get_k_length() + funitig_length));
+  merged2 = merged2 + merged.substr(funitig_length);
+  Unitig res = Unitig(merged2);
+  graph.delete_unitig(unitig2_id);
+  graph.insert_unitig(unitig1_id,res);
+  shift_and_merge(offsets,track_funitig_offsets[unitig2_id],unitig1_length);
+  track_funitig_offsets[unitig1_id]=offsets;
+  unused_id.push_back(unitig2_id);
+  update_suff_pref_index(res.get_ith_mer(0,unitig_index.get_k_length()-1),unitig1_id,0,unitig_index.get_k_length(),suffix_prefix_unitigs);
+  update_suff_pref_index(res.get_ith_mer(res.unitig_length()-unitig_index.get_k_length()+1,unitig_index.get_k_length()-1),unitig1_id,res.unitig_length()-unitig_index.get_k_length()+1,unitig_index.get_k_length(),suffix_prefix_unitigs);
+}
+void update_suff_pref_index(uint64_t kmmer,int id,int offset,int k,std::unordered_map<uint64_t,uint64_t> &suffix_prefix_unitigs){
+  std::tuple<uint64_t,bool> canon_kmmer = reverseComplementCanonical(kmmer,k-1);
+  if(suffix_prefix_unitigs.count(std::get<0>(canon_kmmer)) > 0){
+      uint64_t position=id;
+      position=(position<<31)|offset;
+      position=(position<<1)|std::get<1>(canon_kmmer);
+      suffix_prefix_unitigs[std::get<0>(canon_kmmer)]=position;
+  }
+}
+void insert_suff_pref(uint64_t kmmer,int id,int offset,int k,std::unordered_map<uint64_t,uint64_t> &suffix_prefix_index){
+  std::tuple<uint64_t,bool> canon_kmmer = reverseComplementCanonical(kmmer,k-1);
+  uint64_t position=id;
+  position=(position<<31)|offset;
+  position=(position<<1)|std::get<1>(canon_kmmer);
+  suffix_prefix_index[std::get<0>(canon_kmmer)]=position;
+}
+void update_graph(GfaGraph &graph, Index_mphf &unitig_index,std::unordered_map<int,Unitig> &funitigs, std::unordered_map<int , std::pair<int, int>> &unitig_joins,
+                  std::unordered_map<int , std::pair<int, int>> &funitig_joins,std::unordered_map < uint64_t, bool > & candidate_splits, bool update_index){
+    std::unordered_map<int,int> map_on_split_if_join;// remember the id of the right part of a unitig split of it can join a funitig
+    update_CdBG(unitig_index,graph,candidate_splits,unitig_joins,map_on_split_if_join,update_index);
+    std::vector<int> unused_ids;
+    std::unordered_map< int, std::vector<std::pair< int, int >>> track_funitig_offsets;
+    //merge(graph,funitigs,unitig_index,funitig_joins,unitig_joins,,map_on_split_if_join);
+    merge_all(graph,funitigs,unitig_index,funitig_joins,unitig_joins,map_on_split_if_join,track_funitig_offsets,unused_ids);
+    if(update_index){
+      update_all_with_skips(track_funitig_offsets, graph, unitig_index);
+      unitig_index.update_index(funitigs, graph, unused_ids, track_funitig_offsets);
+    }
+    else{
+      insert_funitigs(graph, funitigs, unused_ids);
+    }
+}
+void update_all_with_skips(const std::unordered_map< int, std::vector<std::pair< int, int >>> &track_funitig_offsets, GfaGraph &graph, Index_mphf &unitig_index){
+  for(auto &skips_offsets: track_funitig_offsets){
+    unitig_index.update_unitig_with_skips(graph.get_unitig(skips_offsets.first),skips_offsets.first,skips_offsets.first,skips_offsets.second);
+  }
+}
+std::vector<std::pair<int,int>> reverseOffsets(std::vector<std::pair<int,int>> funiOffsets,int shift){
+    std::vector<std::pair<int,int>> reversed(funiOffsets.size());
+    for(int i = funiOffsets.size()-1;i>=0;i--){
+        reversed[funiOffsets.size()-i-1] = std::pair<int,int>(shift-funiOffsets[i].second,shift-funiOffsets[i].first);
+    }
+    return reversed;
 }

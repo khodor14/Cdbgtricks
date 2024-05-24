@@ -45,80 +45,7 @@ void Index_mphf::prepare_super_buckets(GfaGraph & graph) {
   }
 
   for (auto node: graph.get_nodes()) {
-    uint64_t pos_min = 0;
-    uint64_t kmer = node.second.get_ith_mer(0, k); //get the i-th mer
-    uint64_t prev_kmer = kmer;
-    uint64_t min_seq = kmer & ((0xffffffffffffffff << (64 - 2 * m)) >> (64 - 2 * m)); //
-    uint64_t canon_min_seq;
-    int pos_min_seq = k - m;
-    uint64_t position = (uint64_t) node.first; //assign unitig id to position
-    position = position << 32; //assign 0 as position in id and the computed orientation
-    uint64_t minimizer = compute_minimizer_position(kmer, pos_min); //minimizer of kmer
-    uint64_t old_minimizer = minimizer; //old minimizer for comparison only
-    uint64_t hash_min = unrevhash_min(minimizer);
-    int counter = 1;
-    //when we have one kmer in the seq, write the data to the super-bucket
-    if (node.second.unitig_length() == k) {
-      old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-      mphfs_info[old_minimizer].mphf_size += counter;
-      mphfs_info[old_minimizer].empty = false;
-    }
-    for (int i = 1; i < node.second.unitig_length() - k + 1; i++) {
-      pos_min_seq++;
-      kmer = node.second.get_next_mer(kmer, i, k); //compute next k-mer
-      min_seq = node.second.get_next_mer(min_seq, pos_min_seq, m);
-      canon_min_seq = canonical_bits(min_seq, m);
-      uint64_t new_hash = unrevhash_min(canon_min_seq);
-      if (new_hash < hash_min) { //new minimizer is found
-        minimizer = canon_min_seq;
-        hash_min = new_hash;
-        pos_min = i + k - m;
-      } else {
-        if (i > pos_min) { //the minimizer is outdated
-          minimizer = compute_minimizer_position(kmer, pos_min);
-          hash_min = unrevhash_min(minimizer);
-          pos_min = pos_min + i;
-        }
-      }
-      if (revhash_min(minimizer) % minimizer_number == revhash_min(old_minimizer) % minimizer_number) {
-        counter++;
-        if (i == node.second.unitig_length() - k) { //when same minimizer and last kmer write everything to the superbucket
-          old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-          mphfs_info[old_minimizer].mphf_size += counter;
-          mphfs_info[old_minimizer].empty = false;
-        }
-      } else {
-        old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-        mphfs_info[old_minimizer].mphf_size += counter;
-        mphfs_info[old_minimizer].empty = false;
-        counter = 1;
-        prev_kmer = kmer;
-        position = (uint64_t) node.first; //assign unitig id to position
-        position = (position << 32) | i; //assign i as position in unitig and the computed orientation
-        old_minimizer = minimizer;
-        if (i == node.second.unitig_length() - k) { //when same minimizer and last kmer write everything to the superbucket
-          minimizer = revhash_min(minimizer) % minimizer_number;
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(minimizer) << "\n"; //write minimizer to super bucket file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(kmer) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-          mphfs_info[minimizer].mphf_size += counter;
-          mphfs_info[minimizer].empty = false;
-        }
-      }
-    }
+    extract_kmers_from_unitig(node.second, node.first, 0, node.second.unitig_length() -k, minimizer_outs);
   }
   for (uint64_t i(0); i < number_of_super_buckets; ++i) {
     * minimizer_outs[i] << std::flush;
@@ -412,10 +339,11 @@ template < typename T >
       mphfs_info[minimizer].bucket_id = bucket_id;
     }
   }
-void Index_mphf::update_index(std::unordered_map < int, Unitig > & constructed_funitigs, GfaGraph & graph) {
+void Index_mphf::update_index(std::unordered_map < int, Unitig > & constructed_funitigs, GfaGraph & graph, std::vector< int > & unused_ids, std::unordered_map < int, std::vector< std::pair< int, int > > > & track_funitig_offsets) {
   //create files for each super bucket and write kmers from funitigs
   //
-  extract_kmers_from_funitigs(constructed_funitigs, graph);
+  //extract_kmers_from_funitigs_in_unitigs(graph,track_funitig_offsets)
+  extract_kmers_from_funitigs(constructed_funitigs, graph, unused_ids, track_funitig_offsets);
   //read and create mphf if the bucket is not small
   //along the way group ungrouped mphf
   uint64_t num_new_kmers_new_supb = 0;
@@ -506,7 +434,80 @@ void Index_mphf::update_index(std::unordered_map < int, Unitig > & constructed_f
     update_super_bucket(graph, last_super_bucket_id, kmers_super_b_updates[last_super_bucket_id]);
   }
 }
-void Index_mphf::extract_kmers_from_funitigs(std::unordered_map < int, Unitig > & constructed_unitigs, GfaGraph & graph) {
+void Index_mphf::extract_kmers_from_unitig(Unitig &u,const int id,int start,int end,std::vector < std::ostream * > &minimizer_outs){
+  uint64_t pos_min = 0;
+  uint64_t kmer = u.get_ith_mer(start, k); //get the i-th mer
+  uint64_t prev_kmer = kmer;
+  uint64_t min_seq = kmer & ((0xffffffffffffffff << (64 - 2 * m)) >> (64 - 2 * m)); //
+  uint64_t canon_min_seq;
+  int pos_min_seq = start + k - m;
+  uint64_t position = (uint64_t) id; //assign unitig id to position
+  position = position << 32; //assign 0 as position in id and the computed orientation
+  uint64_t minimizer = compute_minimizer_position(kmer, pos_min); //minimizer of kmer
+  pos_min = pos_min + start;
+  uint64_t old_minimizer = minimizer; //old minimizer for comparison only
+  uint64_t hash_min = unrevhash_min(minimizer);
+  int counter = 1;
+  //when we have one kmer in the seq, write the data to the super-bucket
+  if (start == end) {
+    old_minimizer = revhash_min(old_minimizer) % minimizer_number;
+    *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
+    *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
+    *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
+    *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
+    mphfs_info[old_minimizer].mphf_size += counter;
+  }
+  for (int i = start + 1; i <= end; i++) {
+    pos_min_seq++;
+    kmer = u.get_next_mer(kmer, i, k); //compute next k-mer
+    min_seq = u.get_next_mer(min_seq, pos_min_seq, m);
+    canon_min_seq = canonical_bits(min_seq, m);
+    uint64_t new_hash = unrevhash_min(canon_min_seq);
+    if (new_hash < hash_min) { //new minimizer is found
+      minimizer = canon_min_seq;
+      hash_min = new_hash;
+      pos_min = i + k - m;
+    } else {
+      if (i > pos_min) { //the minimizer is outdated
+        minimizer = compute_minimizer_position(kmer, pos_min);
+        hash_min = unrevhash_min(minimizer);
+        pos_min = pos_min + i;
+      }
+    }
+    if (revhash_min(minimizer) % minimizer_number == revhash_min(old_minimizer) % minimizer_number) {
+      counter++;
+      if (i == end) { //when same minimizer and last kmer write everything to the superbucket
+        old_minimizer = revhash_min(old_minimizer) % minimizer_number;
+        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
+        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
+        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
+        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
+        mphfs_info[old_minimizer].mphf_size += counter;
+      }
+    } else {
+      old_minimizer = revhash_min(old_minimizer) % minimizer_number;
+      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
+      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
+      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
+      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
+      mphfs_info[old_minimizer].mphf_size += counter;
+      counter = 1;
+      prev_kmer = kmer;
+      position = (uint64_t) id; //assign unitig id to position
+      position = (position << 32) | i; //assign i as position in unitig and the computed orientation
+      old_minimizer = minimizer;
+      if (i == end) { //when same minimizer and last kmer write everything to the superbucket
+        minimizer = revhash_min(minimizer) % minimizer_number;
+        *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(minimizer) << "\n"; //write minimizer to super bucket file
+        *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(kmer) << "\n"; //write k-mer position to output file
+        *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
+        *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
+        mphfs_info[minimizer].mphf_size += counter;
+      }
+    }
+  }
+}
+void Index_mphf::extract_kmers_from_funitigs(std::unordered_map < int, Unitig > & constructed_unitigs, GfaGraph & graph, std::vector< int > & unused_ids, std::unordered_map < int, std::vector< std::pair< int, int > > > & track_funitig_offsets) {
   std::vector < std::ostream * > minimizer_outs(number_of_super_buckets); //write k-mers per file
   for (uint64_t i(0); i < number_of_super_buckets; ++i) {
     auto out = new zstr::ofstream("ccdbgupdater_out" + std::to_string(i) + ".gz");
@@ -516,86 +517,39 @@ void Index_mphf::extract_kmers_from_funitigs(std::unordered_map < int, Unitig > 
     }
     minimizer_outs[i] = out;
   }
-  int id = graph.get_max_node_id();
+  extract_kmers_from_funitigs_in_unitigs(graph, track_funitig_offsets, minimizer_outs);
+  int j=0;
+  int id = 1;
+  std::vector<int> skipped_id(unused_ids.size());
+  for(auto it = constructed_unitigs.begin(); it != constructed_unitigs.end() && j < unused_ids.size(); it++){
+    id = unused_ids[j];
+    skipped_id[j] = it->first;
+    j++;
+    extract_kmers_from_unitig(it->second, id, 0,(it->second).unitig_length() - k, minimizer_outs);
+    graph.insert_unitig(id, it->second);
+  }
+  for(int elem : skipped_id){
+    constructed_unitigs.erase(elem);
+  }
+  id = graph.get_max_node_id();
   //go over unitigs
   for (auto node: constructed_unitigs) {
     id++;
-    uint64_t pos_min = 0;
-    uint64_t kmer = node.second.get_ith_mer(0, k); //get the i-th mer
-    uint64_t prev_kmer = kmer;
-    uint64_t min_seq = kmer & ((0xffffffffffffffff << (64 - 2 * m)) >> (64 - 2 * m)); //
-    uint64_t canon_min_seq;
-    int pos_min_seq = k - m;
-    uint64_t position = (uint64_t) id; //assign unitig id to position
-    position = position << 32; //assign 0 as position in id and the computed orientation
-    uint64_t minimizer = compute_minimizer_position(kmer, pos_min); //minimizer of kmer
-    uint64_t old_minimizer = minimizer; //old minimizer for comparison only
-    uint64_t hash_min = unrevhash_min(minimizer);
-    int counter = 1;
-    //when we have one kmer in the seq, write the data to the super-bucket
-    if (node.second.unitig_length() == k) {
-      old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-      *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-      mphfs_info[old_minimizer].mphf_size += counter;
-    }
-    for (int i = 1; i < node.second.unitig_length() - k + 1; i++) {
-      pos_min_seq++;
-      kmer = node.second.get_next_mer(kmer, i, k); //compute next k-mer
-      min_seq = node.second.get_next_mer(min_seq, pos_min_seq, m);
-      canon_min_seq = canonical_bits(min_seq, m);
-      uint64_t new_hash = unrevhash_min(canon_min_seq);
-      if (new_hash < hash_min) { //new minimizer is found
-        minimizer = canon_min_seq;
-        hash_min = new_hash;
-        pos_min = i + k - m;
-      } else {
-        if (i > pos_min) { //the minimizer is outdated
-          minimizer = compute_minimizer_position(kmer, pos_min);
-          hash_min = unrevhash_min(minimizer);
-          pos_min = pos_min + i;
-        }
-      }
-      if (revhash_min(minimizer) % minimizer_number == revhash_min(old_minimizer) % minimizer_number) {
-        counter++;
-        if (i == node.second.unitig_length() - k) { //when same minimizer and last kmer write everything to the superbucket
-          old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-          mphfs_info[old_minimizer].mphf_size += counter;
-        }
-      } else {
-        old_minimizer = revhash_min(old_minimizer) % minimizer_number;
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(old_minimizer) << "\n"; //write minimizer to super bucket file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(prev_kmer) << "\n"; //write k-mer position to output file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-        *(minimizer_outs[old_minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-        mphfs_info[old_minimizer].mphf_size += counter;
-        counter = 1;
-        prev_kmer = kmer;
-        position = (uint64_t) id; //assign unitig id to position
-        position = (position << 32) | i; //assign i as position in unitig and the computed orientation
-        old_minimizer = minimizer;
-        if (i == node.second.unitig_length() - k) { //when same minimizer and last kmer write everything to the superbucket
-          minimizer = revhash_min(minimizer) % minimizer_number;
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(minimizer) << "\n"; //write minimizer to super bucket file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(kmer) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(position) << "\n"; //write k-mer position to output file
-          *(minimizer_outs[minimizer / bucket_per_super_bucket]) << std::to_string(counter) << "\n"; //write k-mer position to output file
-          mphfs_info[minimizer].mphf_size += counter;
-        }
-      }
-    }
+    extract_kmers_from_unitig(node.second, id, 0, node.second.unitig_length() - k, minimizer_outs);
     graph.insert_unitig(id, node.second);
   }
   graph.set_max_node_id(id);
   for (uint64_t i(0); i < number_of_super_buckets; ++i) {
     * minimizer_outs[i] << std::flush;
     delete(minimizer_outs[i]);
+  }
+}
+void Index_mphf::extract_kmers_from_funitigs_in_unitigs(GfaGraph & graph, std::unordered_map<int,std::vector<std::pair<int, int>>> funitig_offsets, std::vector < std::ostream * > &minimizer_outs){
+  for(auto &elem: funitig_offsets){
+    Unitig uni = graph.get_unitig(elem.first);
+    for(auto &offset_pair: elem.second){
+      extract_kmers_from_unitig(uni, elem.first, offset_pair.first, offset_pair.second - k + 1, minimizer_outs);
+    }
   }
 }
 void Index_mphf::update_unitig(Unitig seq, int id, int previous_id, int starting_position, int ending_position, bool keep_orient) {
@@ -621,6 +575,31 @@ void Index_mphf::update_unitig(Unitig seq, int id, int previous_id, int starting
     index_by_mphf = all_mphfs[bucket_id](std::get < 0 > (seq_data));
     position_kmers[bucket_id][index_by_mphf] = position;
     j++;
+  }
+}
+void Index_mphf::update_unitig_with_skips(Unitig seq, int id, int previous_id, std::vector<std::pair<int,int>> skips){
+  std::pair<int,int> starting = skips[0];
+  int where_to_start = 0;
+  int where_to_end = starting.first - 1;
+  if(starting.first != 0){
+    update_unitig(seq,id,id,where_to_start,where_to_end,true);
+  }
+  for(int i = 0 ;i < skips.size() - 1; i++){
+    where_to_start = skips[i].second -k + 2;
+    where_to_end = skips[i+1].first - 1;
+    update_unitig(seq,id,id,where_to_start,where_to_end,true);
+  }
+  std::pair<int,int> last = skips[skips.size() - 1];
+  if(last.first == 0){
+    where_to_start = last.second -k + 2;
+    where_to_end = seq.unitig_length() - k;
+    update_unitig(seq,id,id,where_to_start,where_to_end,true);
+  }
+  else if (last.second != seq.unitig_length() -1)
+  {
+    where_to_start = last.second - k + 2;
+    where_to_end = seq.unitig_length() - k;
+    update_unitig(seq,id,id,where_to_start,where_to_end,true);
   }
 }
 int Index_mphf::get_k_length() {

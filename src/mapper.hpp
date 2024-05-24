@@ -12,6 +12,7 @@ private:
     float ratio;
 public:
     Mapper(float r);    
+    std::vector<std::pair<int,int>> map_back2(const std::string_view seq,Index_mphf& graph_ind,GfaGraph& graph);
     std::vector<int> map_back(const std::string_view seq,Index_mphf& graph_ind,GfaGraph& graph);
     ~Mapper()=default;
 };

@@ -22,7 +22,7 @@ In addition it indexes the graph, updates the index when adding sequences and so
 	* From [Bioconda](https://bioconda.github.io):
 
   ```bash
-  conda install -c conda-forge -c tlemane kmtricks #(latest version)
+  conda install -c conda-forge -c tlemane kmtricks
   ```
 
 * Installing ccdbupdater: Currently we have only the source version
@@ -50,7 +50,73 @@ First change the number of files that can be oppened
 displays the command line interface:
 ```
 Usage: ./cdbgtricks [COMMAND] [PARAMETERS]
-XXXTODO copy the help once stabilizedXXX
+
+[COMMAND]:
+	update 		 update a compacted de Bruijn graph with a new genome
+	index 		 index k-mers of a compacted de Bruijn graph
+	convert		 convert a graph from GFA/FASTA to binary or binary to fasta
+	query 		 Query reads in Fasta/Fastq format (output presence/absence of reads)
+	map		 Map reads in Fasta/Fastq format (output uni-MEMs)
+
+[PARAMETERS]: update
+	> Obligatory with required arguments:
+	--input_graph[-ig]	 the path to the graph in gfa or fasta format
+	--input_genome	 the path to the genome used to augment the input graph
+	> Optional with required arguments:
+	--load_graph_binary[-lgb] load the graph from binary file
+	--k_mer_size[-k] the size of the k-mer.
+			 It must be the same value used when constructing the input graph [default: 31]
+	--minimizer_size[-m] the size of the minimizer (m < k) [default: 11]
+	--k_mer_file	 the file of absent k-mers from the graph if already computed
+	--smallest_merge[-s]	 the threshold for creating buckets (rho in the paper) [default: 5000]
+	--multiplier_super_bucket[-msb]	 size of super-bucket in terms of small bucket (gamma in the paper) [default: 4]
+	--load_index[-li] Input the index file of the graph
+	--threads[-t] the number of threads to be used during the update [default: 1]
+	> Optional with no arguments:
+	--update_index[-u] update the index of the graph [default: no update]
+	--output_index[-oi] write the index to a binary file [default: no output]
+	--output_graph_binary[-ogb] write the graph in binary format [default: output in fasta]
+
+[PARAMETERS]: index
+	> Obligatory with required arguments:
+	--input_graph[-ig]	 the path to the graph in gfa/fasta/binary format
+	> Optional with required arguments:
+	--k_mer_size[-k] the size of the k-mer [default: 31]
+	--minimizer_size[-m] the size of the minimizer (m < k) [default: 11]
+	--smallest_merge[-s]	 the threshold for creating buckets (rho in the paper) [default: 5000]
+	--multiplier_super_bucket[-msb]	 size of super-bucket in terms of small bucket (gamma in the paper) [default: 4]
+	> Optional with no arguments:
+	 -it	 the input is in text format (fasta/GFA)
+	 -ib	 the input is in binary format
+
+[PARAMETERS]: convert
+	> Obligatory with required arguments:
+	--input_graph[-ig]	 the path to the graph in gfa/fasta/binary format
+	> Obligatory with no arguments:
+	 -it	 the input is in text format (fasta/GFA)
+	 -ib	 the input is in binary format (Cdbtricks fromat)
+	 -of	 output in fasta format
+	 -ob	 output in binary format (Cdbtricks fromat)
+
+[PARAMETERS]: map or query
+	> Obligatory with required arguments:
+	--input_graph[-ig]	 the path to the pangenome graph in gfa/fasta/binary format
+	--query_reads[-qr]	 the path to the to the read query set in fasta format
+	> Optional with arguments:
+	--ratio[-r]	 the desired ratio of shared k-mers between a read and the graph [default: 1.0]
+	--k_mer_size[-k] the size of the k-mer [default: 31]
+	--minimizer_size[-m] the size of the minimizer (m < k) [default: 11]
+	--smallest_merge[-s]	 the threshold for creating buckets (rho in the paper)
+	--multiplier_super_bucket[-msb]	 size of super-bucket in terms of small bucket (gamma in the paper)
+	> Optional with no arguments:
+	 -it	 the input graph is in text format (fasta/GFA)
+	 -ib	 the input graph is in binary format (Cdbgtricks format)
+	--load_index[-li] Input the index file of the graph
+
+[PARAMETERS] Common to all COMMANDS
+	--output_file_name[-o]	 the name of the output file
+	--help[-h]	 prints this help message
+	-v verbose
 ```
 ### Examples
   1. **Indexing a compacted de Bruijn Graph**
@@ -81,8 +147,6 @@ XXXTODO copy the help once stabilizedXXX
   ./cdbgtricks map -ig ../test/graph.gfa -qr unitigs_fasta.fa -k 31 -r 1 -li graph_update_index.bin -o results_mapping
   ```
   Instead of outputing if a read is present or absent, it outputs the uni-MEMs of the read. A uni-MEM is a 5-tuple (unitig id, unitig start, unitig end,read start, read end). The output is written to results_mapping.txt
-
-
 
 ## Contact
 

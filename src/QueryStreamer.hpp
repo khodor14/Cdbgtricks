@@ -2,15 +2,10 @@
 #define Query_S
 
 #include "index.hpp"
-
 #include "ParseGFA.h"
-
 #include "unitig.h"
-
 #include "zstr.hpp"
-
 #include "kseq.h"
-
 #include "CommonUtils.h"
 
 #ifndef KSEQ_INIT_READY

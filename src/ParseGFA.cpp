@@ -69,7 +69,6 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename, bool gfa) {
   int max_id = 0;
   std::string seq;
   while (getline(gin, line).good()) {
-    //std::cout<<"Hello"<<std::endl;
     if (line[0] == 'S') { // Segment line
 
       const char * buffer = line.c_str() + 2;
@@ -84,51 +83,12 @@ GfaGraph GfaGraph::LoadFromStream(std::string filename, bool gfa) {
       }
 
       if (end_buffer - buffer != 0) line_fields.push_back(std::string(buffer, end_buffer - buffer));
-      int id = stoi(move(line_fields[0]));
-      if (id > max_id) {
-        max_id = id;
-      }
+      move(line_fields[0]);
+      max_id++;
       seq = move(line_fields[1]);
-      graph.unitigs[id] = Unitig(seq);
+      graph.unitigs[max_id] = Unitig(seq);
       line_fields.clear();
     }
-    /*if (line[0] == 'L')
-		{
-			std::stringstream sstr {line};
-			std::string fromstr;
-			std::string tostr;
-			std::string fromstart;
-			std::string toend;
-			std::string dummy;
-			std::string overlapstr;
-			
-			sstr >> dummy;
-			assert(dummy == "L");
-			sstr >> fromstr;
-			size_t from = stoi(fromstr);
-			sstr >> fromstart;
-			sstr >> tostr;
-			size_t to = stoi(tostr);
-			sstr >> toend;
-			assert(fromstart == "+" || fromstart == "-");
-			assert(toend == "+" || toend == "-");
-			sstr >> overlapstr;
-			assert(overlapstr.size() >= 1);
-			size_t charAfterIndex = 0;
-			int overlap = std::stol(overlapstr, &charAfterIndex, 10);
-			assert(overlap >= 0);
-            bool fromP(true);
-            bool toP(true);
-            if(fromstart=="-"){
-                fromP=false;
-            }
-            if(toend=="-"){
-                toP=false;
-            }
-            edge e=edge(from,to,fromP,toP);
-
-            graph.edges.push_back(e);
-		}*/
   }
   graph.set_max_node_id(max_id);
   return graph;
@@ -139,9 +99,9 @@ void GfaGraph::convertToFasta(std::string filename) {
 
   graphfile.open(filename.c_str());
   graph.rdbuf(graphfile.rdbuf());
-  for (std::pair < int, Unitig > unitig: unitigs) {
-    graph << ">sequence" + std::to_string(unitig.first) << std::endl;
-    graph << unitig.second.to_string() << std::endl;
+  for (int i=1;i<=unitigs.size();i++) {
+    graph << "> "<<std::to_string(i) << std::endl;
+    graph << unitigs[i].to_string() << std::endl;
   }
   graphfile.close();
 }
@@ -277,6 +237,13 @@ void GfaGraph::fixe_edges(int node_id, int new_node, bool from, bool to) {
 std::unordered_map < int, Unitig > GfaGraph::get_nodes() {
   return unitigs;
 }
+bool GfaGraph::test_kmer(uint64_t kmer,uint64_t kmer_pos,int k){
+  int id_unitig_graph = kmer_pos >> 32; //the id of the unitig having the first occurence
+  int position_unitig = (kmer_pos >> 1) & 0x7FFFFFFF; //the position of k-mer in this unitig
+  Unitig seq = unitigs[id_unitig_graph];
+  uint64_t kmer_in_graph = seq.get_ith_mer(position_unitig, k); //take the k-mer from the unitig
+  return canonical_bits(kmer_in_graph,k)==canonical_bits(kmer,k);
+}
 int GfaGraph::test_kmer_presence(uint64_t kmer, uint64_t suffix, uint64_t kmer_pos, int k) {
   /*
   Input:
@@ -299,18 +266,40 @@ int GfaGraph::test_kmer_presence(uint64_t kmer, uint64_t suffix, uint64_t kmer_p
   std::tuple < uint64_t, bool > kmer_graph_canonical = reverseComplementCanonical(kmer_in_graph, k);
   if (std::get < 0 > (kmer_query_canonical) == std::get < 0 > (kmer_graph_canonical)) {
     //the k-mer is in the graph
-    uint64_t pref_kmer = canonical_bits(kmer_in_graph >> 2, k - 1);
-    if (suffix == pref_kmer) {
-      return position_unitig;
-    } else {
-      if (position_unitig == seq.unitig_length() - k) {
-        return 0;
-      } else {
-        return position_unitig + 1;
+    uint64_t pref_kmer = kmer_in_graph >> 2;
+    if(position_unitig == 0){
+      if(suffix == pref_kmer){
+        return 0;//maybe a join with the unitig
+      }
+      else if (canonical_bits(suffix,k-1) != canonical_bits(pref_kmer,k-1))
+      {
+        return 1;
+      }
+      return -2;
+    }
+    else if (position_unitig == seq.unitig_length()-k)
+    {
+      uint64_t suff_kmer = kmer_in_graph & (0xFFFFFFFFFFFFFFFF >> (66-2*k));
+      if (suff_kmer == suffix){
+        return -2;
+      }
+      else if (canonical_bits(pref_kmer, k - 1) == canonical_bits(suffix, k - 1))
+      {
+        return position_unitig;
+      }
+      else{
+        return -1;// we may join
       }
     }
+    else{
+      pref_kmer = canonical_bits(pref_kmer, k - 1);
+      if (suffix == pref_kmer) {
+        return position_unitig;
+      }
+      return position_unitig + 1;
+    }
   } else {
-    return -1; //the k-mer is not in the graph
+    return -3; //the k-mer is not in the graph
   }
 
 }
