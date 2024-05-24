@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <fstream>
 #include <cstring>
 #include <string>

@@ -1,0 +1,5 @@
+- 0.1.0: date description
+- 0.1.1: 2024-05-03
+    - code cleaning
+    - simplifiy help message
+    - CMakelist corrections (suppress boost dependancy)

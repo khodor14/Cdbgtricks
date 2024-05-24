@@ -33,3 +33,9 @@
 
 # build directory
 build
+
+# specific to this project
+*.fa
+*.bin
+*.tsv
+README_files/*
