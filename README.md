@@ -7,13 +7,13 @@
 [CONTACT](#contact)
 
 # Cdbgtricks
-Cdbgtricks is a C++11 modular tool, mainly designed to update a compacted de Bruijn graph, when adding nex sequences. 
+Cdbgtricks is a C++11 modular tool, mainly designed to update a compacted de Bruijn graph, when adding new sequences. 
 In addition it indexes the graph, updates the index when adding sequences and so it enables querying sequences on the graph. 
 
 ## Publication
 A preprint is available on bioRxiv: 
 * Hannoush, Khodor, Camille Marchet, and Pierre Peterlongo. "Cdbgtricks: strategies to update a compacted de bruijn graph." [bioRxiv](https://www.biorxiv.org/content/10.1101/2024.05.24.595676v1) (2024): 2024-05.
-
+* Accepted and presented at the Prague Stringology Conference [PSC](https://psc.fit.cvut.cz/event/2024/)
 ## Requirements
 
 * C++11 compiler: [GCC](https://gcc.gnu.org/) >= 4.8.5
