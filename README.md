@@ -14,6 +14,8 @@ In addition it indexes the graph, updates the index when adding sequences and so
 A preprint is available on bioRxiv: 
 * Hannoush, Khodor, Camille Marchet, and Pierre Peterlongo. "Cdbgtricks: strategies to update a compacted de bruijn graph." [bioRxiv](https://www.biorxiv.org/content/10.1101/2024.05.24.595676v1) (2024): 2024-05.
 * Accepted and presented at the Prague Stringology Conference [PSC](https://psc.fit.cvut.cz/event/2024/)
+## Experiments
+Please refer to [this](https://github.com/khodor14/Cdbgtricks_experiments) repository to access the experiments of the paper.
 ## Requirements
 
 * C++11 compiler: [GCC](https://gcc.gnu.org/) >= 4.8.5
