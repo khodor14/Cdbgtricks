@@ -12,7 +12,7 @@
 #include <iterator>
 
 #include <cmath>
-
+#include <cstdint>
 class Unitig {
   private:
     /* data */
